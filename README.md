@@ -1,0 +1,1 @@
+# plugin-google-recommender-inven-collector
