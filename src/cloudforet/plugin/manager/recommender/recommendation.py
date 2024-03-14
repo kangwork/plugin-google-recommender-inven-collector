@@ -1,5 +1,4 @@
 import logging
-import time
 import requests
 import json
 
@@ -82,6 +81,7 @@ class RecommendationManager(ResourceManager):
             options=options, secret_data=secret_data, schema=schema
         )
 
+        preprocessed_recommendations = []
         for recommendation_parent in recommendation_parents:
             recommendations = recommendation_conn.list_recommendations(
                 recommendation_parent
@@ -129,23 +129,54 @@ class RecommendationManager(ResourceManager):
                     display["insights"] = self._change_insights(related_insights)
 
                 recommendation.update({"display": display})
+                preprocessed_recommendations.append(recommendation)
 
-                self.set_region_code("global")
-                yield make_cloud_service(
-                    name=recommendation_name,
-                    cloud_service_type=self.cloud_service_type,
-                    cloud_service_group=self.cloud_service_group,
-                    provider=self.provider,
-                    account=self.project_id,
-                    data=recommendation,
-                    region_code="global",
-                    instance_type="",
-                    instance_size=0,
-                    reference={
-                        "resource_id": recommendation_name,
-                        "external_link": f"https://console.cloud.google.com/cloudpubsub/schema/detail/{recommendation_name}?project={self.project_id}",
-                    },
-                )
+        recommenders = self._create_recommenders(preprocessed_recommendations)
+        merged_recommenders = self._merge_recommenders(recommenders)
+        for recommender in merged_recommenders:
+            total_cost = 0
+            resource_count = 0
+            total_priority_level = {
+                "Lowest": 0,
+                "Second Lowest": 0,
+                "Highest": 0,
+                "Second Highest": 0,
+            }
+            for recommendation in recommender["recommendations"]:
+                if recommender["category"] == "COST":
+                    total_cost += recommendation.get("cost", 0)
+
+                if recommendation.get("affected_resource"):
+                    resource_count += 1
+
+                total_priority_level[recommendation.get("priorityLevel")] += 1
+
+            if total_cost:
+                recommender["costSavings"] = f"Total ${round(total_cost, 2)}/month"
+            if resource_count:
+                recommender["resourceCount"] = resource_count
+
+            (
+                recommender["state"],
+                recommender["primaryPriorityLevel"],
+            ) = self._get_state_and_priority(total_priority_level)
+
+            self.set_region_code("global")
+            yield make_cloud_service(
+                name=recommender["name"],
+                cloud_service_type=self.cloud_service_type,
+                cloud_service_group=self.cloud_service_group,
+                provider=self.provider,
+                account=self.project_id,
+                data=recommender,
+                region_code="global",
+                instance_type="",
+                instance_size=0,
+                reference={
+                    "resource_id": recommender["id"],
+                    "external_link": f"https://console.cloud.google.com/cloudpubsub/schema/detail/{recommender['id']}?project={self.project_id}",
+                },
+            )
 
     @staticmethod
     def _create_recommendation_id_map_by_crawling():
@@ -400,3 +431,72 @@ class RecommendationManager(ResourceManager):
                 }
             )
         return changed_insights
+
+    @staticmethod
+    def _create_recommenders(preprocessed_recommendations):
+        recommenders = []
+        for pre_recommendation in preprocessed_recommendations:
+            redefined_insights = []
+            if insights := pre_recommendation["display"]["insights"]:
+                for insight in insights:
+                    redefined_insights.append(
+                        {
+                            "description": insight["description"],
+                            "severity": insight["severity"],
+                            "category": insight["category"],
+                        }
+                    )
+
+            redefined_recommendations = [
+                {
+                    "description": pre_recommendation["description"],
+                    "state": pre_recommendation["stateInfo"]["state"],
+                    "affectedResource": pre_recommendation["display"].get("resource"),
+                    "location": pre_recommendation["display"]["location"],
+                    "priorityLevel": pre_recommendation["display"]["priorityDisplay"],
+                    "operations": pre_recommendation["display"]["operationActions"],
+                    "cost": pre_recommendation["display"].get("cost"),
+                    "costSavings": pre_recommendation["display"].get("costDescription"),
+                    "insights": redefined_insights,
+                }
+            ]
+
+            recommender = {
+                "name": pre_recommendation["display"]["recommenderIdName"],
+                "id": pre_recommendation["display"]["recommenderId"],
+                "description": pre_recommendation["display"][
+                    "recommenderIdDescription"
+                ],
+                "category": pre_recommendation["primaryImpact"]["category"],
+                "recommendations": redefined_recommendations,
+            }
+
+            recommenders.append(recommender)
+        return recommenders
+
+    def _merge_recommenders(self, recommenders):
+        merged_recommenders = []
+        for recommender in recommenders:
+            recommender_id = recommender["id"]
+            if "recommendations" not in self.recommender_map[recommender_id]:
+                self.recommender_map[recommender_id].update(recommender)
+            else:
+                for recommendation in recommender["recommendations"]:
+                    self.recommender_map[recommender_id]["recommendations"].append(
+                        recommendation
+                    )
+            merged_recommenders.append(self.recommender_map[recommender_id])
+        return merged_recommenders
+
+    @staticmethod
+    def _get_state_and_priority(total_priority_level):
+        if total_priority_level["Highest"] > 0:
+            return "error", "Highest"
+
+        if total_priority_level["Second Highest"] > 0:
+            return "warning", "Second Highest"
+
+        if total_priority_level["Second Lowest"] > 0:
+            return "ok", "Second Lowest"
+        else:
+            return "ok", "Lowest"
