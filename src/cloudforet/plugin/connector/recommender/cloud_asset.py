@@ -15,7 +15,12 @@ class CloudAssetConnector(GoogleCloudConnector):
 
     def list_assets_in_project(self, **query):
         total_assets = []
-        query.update({"parent": f"projects/{self.project_id}"})
+        query.update(
+            {
+                "parent": f"projects/{self.project_id}",
+                "contentType": "RESOURCE",
+            }
+        )
         request = self.client.assets().list(**query)
 
         while request is not None:

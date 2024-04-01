@@ -23,18 +23,6 @@ _UNAVAILABLE_RECOMMENDER_IDS = [
     "google.cloudfunctions.PerformanceRecommender",
 ]
 
-_COST_RECOMMENDER_IDS = [
-    "google.bigquery.capacityCommitments.Recommender",
-    "google.cloudsql.instance.IdleRecommender",
-    "google.cloudsql.instance.OverprovisionedRecommender",
-    "google.compute.commitment.UsageCommitmentRecommender",
-    "google.cloudbilling.commitment.SpendBasedCommitmentRecommender",
-    "google.compute.image.IdleResourceRecommender",
-    "google.compute.address.IdleResourceRecommender",
-    "google.compute.disk.IdleResourceRecommender",
-    "google.compute.instance.IdleResourceRecommender",
-]
-
 
 class RecommendationManager(ResourceManager):
     service = "Recommender"
@@ -70,12 +58,10 @@ class RecommendationManager(ResourceManager):
         cloud_asset_conn = CloudAssetConnector(
             options=options, secret_data=secret_data, schema=schema
         )
-        asset_names = [
-            asset["name"] for asset in cloud_asset_conn.list_assets_in_project()
-        ]
+        assets = [asset for asset in cloud_asset_conn.list_assets_in_project()]
+        self._create_location_field_to_recommendation_map(assets)
 
-        target_locations = self._create_target_locations(asset_names)
-        recommendation_parents = self._create_recommendation_parents(target_locations)
+        recommendation_parents = self._create_parents_for_request_params()
 
         recommendation_conn = RecommendationConnector(
             options=options, secret_data=secret_data, schema=schema
@@ -225,68 +211,118 @@ class RecommendationManager(ResourceManager):
 
         return recommendation_id_map
 
-    @staticmethod
-    def _create_target_locations(asset_names):
-        locations = []
-        for asset_name in asset_names:
-            if (
-                "locations/" in asset_name
-                or "regions/" in asset_name
-                and "subnetworks" not in asset_name
-            ):
-                try:
-                    prefix, sub_asset = asset_name.split("locations/")
-                    location, _ = sub_asset.split("/", 1)
-
-                    if location not in locations:
-                        locations.append(location)
-
-                except ValueError:
-                    prefix, sub_asset = asset_name.split("regions/")
-                    location, _ = sub_asset.split("/", 1)
-
-                    if location not in locations:
-                        locations.append(location)
-        return locations
-
-    @staticmethod
-    def _select_available_locations(locations):
-        available_locations = []
-        for location in locations:
-            if location[-2:] in ["-a", "-b", "-c"]:
-                available_locations.append(location[:-2])
-
-            if location in REGION_INFO:
-                available_locations.append(location)
-
-        return available_locations
-
-    def _create_recommendation_parents(self, locations):
+    def _create_parents_for_request_params(self):
         recommendation_parents = []
-        locations = self._select_available_locations(locations)
-        for location in locations:
-            for recommender_id in self.recommender_map.keys():
-                if (
-                    recommender_id in _COST_RECOMMENDER_IDS
-                    and location != "global"
-                    and location[-2:] not in ["-a", "-b", "-c"]
-                ):
-                    regions_and_zones = [
-                        location,
-                        f"{location}-a",
-                        f"{location}-b",
-                        f"{location}-c",
-                    ]
-                    for region_or_zone in regions_and_zones:
-                        recommendation_parents.append(
-                            f"projects/{self.project_id}/locations/{region_or_zone}/recommenders/{recommender_id}"
-                        )
-                else:
-                    recommendation_parents.append(
-                        f"projects/{self.project_id}/locations/{location}/recommenders/{recommender_id}"
-                    )
-
+        for recommender_id, recommender_info in self.recommender_map.items():
+            for region_or_zone in recommender_info["locations"]:
+                recommendation_parents.append(
+                    f"projects/{self.project_id}/locations/{region_or_zone}/recommenders/{recommender_id}"
+                )
         return recommendation_parents
+
+    def _create_location_field_to_recommendation_map(self, assets):
+        parents_and_locations_map = (
+            self._create_parents_and_location_map_by_cloud_asset_api(assets)
+        )
+
+        self._add_group_and_service_to_recommender_map()
+        self._add_locations_to_recommender_map(parents_and_locations_map)
+
+    @staticmethod
+    def _create_parents_and_location_map_by_cloud_asset_api(assets):
+        parents_and_locations_map = {}
+        for asset in assets:
+            asset_type = asset["assetType"]
+            locations = asset["resource"].get("location", "global")
+
+            service, cloud_service_type = asset_type.split("/")
+            cloud_service_group, postfix = service.split(".", 1)
+            cloud_service_type = cloud_service_type.lower()
+
+            if cloud_service_group not in parents_and_locations_map:
+                parents_and_locations_map[cloud_service_group] = {}
+            else:
+                if (
+                    cloud_service_type
+                    not in parents_and_locations_map[cloud_service_group]
+                ):
+                    parents_and_locations_map[cloud_service_group][
+                        cloud_service_type
+                    ] = [locations]
+                else:
+                    if (
+                        locations
+                        not in parents_and_locations_map[cloud_service_group][
+                            cloud_service_type
+                        ]
+                    ):
+                        parents_and_locations_map[cloud_service_group][
+                            cloud_service_type
+                        ].append(locations)
+
+        for group, cst_and_locations in parents_and_locations_map.items():
+            all_locations = set()
+            for cst, locations in cst_and_locations.items():
+                for location in locations:
+                    all_locations.add(location)
+            if all_locations:
+                parents_and_locations_map[group]["all_locations"] = list(all_locations)
+
+        return parents_and_locations_map
+
+    @staticmethod
+    def _add_group_and_service_to_recommender_map():
+        for key, value in RECOMMENDATION_MAP.items():
+            prefix, cloud_service_group, cloud_service_type, *others = key.split(".")
+            if not (
+                cloud_service_type.endswith("Commitments")
+                or cloud_service_type.endswith("Recommender")
+            ):
+                if cloud_service_group == "cloudsql":
+                    cloud_service_group = "sqladmin"
+                RECOMMENDATION_MAP[key]["cloud_service_group"] = cloud_service_group
+                RECOMMENDATION_MAP[key][
+                    "cloud_service_type"
+                ] = cloud_service_type.lower()
+            else:
+                RECOMMENDATION_MAP[key]["cloud_service_group"] = cloud_service_group
+                RECOMMENDATION_MAP[key]["cloud_service_type"] = None
+
+    @staticmethod
+    def _add_locations_to_recommender_map(parents_and_locations_map):
+        delete_services = []
+        for service, cst in parents_and_locations_map.items():
+            if not cst:
+                delete_services.append(service)
+
+        for service in delete_services:
+            del parents_and_locations_map[service]
+
+        for key, value in RECOMMENDATION_MAP.items():
+            cloud_service_group = value["cloud_service_group"]
+            cloud_service_type = value["cloud_service_type"]
+
+            for service, cst_and_locations in parents_and_locations_map.items():
+                if cloud_service_group == service:
+                    for service_key, locations in cst_and_locations.items():
+                        if cloud_service_type == service_key:
+                            RECOMMENDATION_MAP[key]["locations"] = locations
+
+                    if (
+                        "locations" not in RECOMMENDATION_MAP[key]
+                        and cloud_service_group == "compute"
+                    ):
+                        RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
+                            "instance"
+                        ]
+
+                    if "locations" not in RECOMMENDATION_MAP[key]:
+                        RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
+                            "all_locations"
+                        ]
+
+            if "locations" not in RECOMMENDATION_MAP[key]:
+                RECOMMENDATION_MAP[key]["locations"] = ["global"]
 
     @staticmethod
     def _get_region_and_recommender_id(recommendation_name):
