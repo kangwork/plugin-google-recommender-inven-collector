@@ -68,7 +68,7 @@ tabs.1:
   fields:
     - Description: description
       type: more
-      popup_key: insights
+      popup_key: data.recommendations.insights
       popup_name: Insights
       popup_type: simple-table
       popup_fields:
@@ -99,6 +99,11 @@ tabs.1:
         - STATE_UNSPECIFIED: red.500
         - DISMISSED: red.500
     - Cost Savings: costSavings
+    - Affected Resource: display
+      type: more
+      popup_name: Affected Resources
+      popup_type: raw
+      popup_key: data.recommendations.affectedResources
     - Location: location
     - Priority Level: priorityLevel
       type: enum

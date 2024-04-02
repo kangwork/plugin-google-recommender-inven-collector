@@ -239,18 +239,18 @@ class RecommendationManager(ResourceManager):
                 parents_and_locations_map[cloud_service_group] = {}
             else:
                 if (
-                        cloud_service_type
-                        not in parents_and_locations_map[cloud_service_group]
+                    cloud_service_type
+                    not in parents_and_locations_map[cloud_service_group]
                 ):
                     parents_and_locations_map[cloud_service_group][
                         cloud_service_type
                     ] = [locations]
                 else:
                     if (
-                            locations
-                            not in parents_and_locations_map[cloud_service_group][
-                        cloud_service_type
-                    ]
+                        locations
+                        not in parents_and_locations_map[cloud_service_group][
+                            cloud_service_type
+                        ]
                     ):
                         parents_and_locations_map[cloud_service_group][
                             cloud_service_type
@@ -271,8 +271,8 @@ class RecommendationManager(ResourceManager):
         for key, value in RECOMMENDATION_MAP.items():
             prefix, cloud_service_group, cloud_service_type, *others = key.split(".")
             if not (
-                    cloud_service_type.endswith("Commitments")
-                    or cloud_service_type.endswith("Recommender")
+                cloud_service_type.endswith("Commitments")
+                or cloud_service_type.endswith("Recommender")
             ):
                 if cloud_service_group == "cloudsql":
                     cloud_service_group = "sqladmin"
@@ -302,8 +302,8 @@ class RecommendationManager(ResourceManager):
                             RECOMMENDATION_MAP[key]["locations"] = locations
 
                     if (
-                            "locations" not in RECOMMENDATION_MAP[key]
-                            and cloud_service_group == "compute"
+                        "locations" not in RECOMMENDATION_MAP[key]
+                        and cloud_service_group == "compute"
                     ):
                         RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
                             "instance"
@@ -498,6 +498,7 @@ class RecommendationManager(ResourceManager):
                     "cost": pre_recommendation["display"].get("cost"),
                     "costSavings": pre_recommendation["display"].get("costDescription"),
                     "insights": redefined_insights,
+                    "display": "show",
                 }
             ]
 
