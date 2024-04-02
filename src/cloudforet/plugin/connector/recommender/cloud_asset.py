@@ -19,6 +19,7 @@ class CloudAssetConnector(GoogleCloudConnector):
             {
                 "parent": f"projects/{self.project_id}",
                 "contentType": "RESOURCE",
+                "pageSize": 1000,
             }
         )
         request = self.client.assets().list(**query)

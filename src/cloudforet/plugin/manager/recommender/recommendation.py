@@ -5,11 +5,7 @@ import json
 from bs4 import BeautifulSoup
 from spaceone.inventory.plugin.collector.lib import *
 
-from cloudforet.plugin.config.global_conf import (
-    ASSET_URL,
-    REGION_INFO,
-    RECOMMENDATION_MAP,
-)
+from cloudforet.plugin.config.global_conf import ASSET_URL, RECOMMENDATION_MAP
 from cloudforet.plugin.connector.recommender import *
 from cloudforet.plugin.manager import ResourceManager
 
@@ -95,10 +91,8 @@ class RecommendationManager(ResourceManager):
                     "location": self._get_location(recommendation_parent),
                 }
 
-                if resource := recommendation["content"]["overview"].get(
-                    "resourceName"
-                ):
-                    display["resource"] = self._change_resource(resource)
+                if resource := recommendation["content"].get("overview"):
+                    display["resource"] = resource
 
                 if cost_info := recommendation["primaryImpact"].get("costProjection"):
                     cost = cost_info.get("cost", {})
@@ -118,8 +112,10 @@ class RecommendationManager(ResourceManager):
                 preprocessed_recommendations.append(recommendation)
 
         recommenders = self._create_recommenders(preprocessed_recommendations)
-        merged_recommenders = self._merge_recommenders(recommenders)
-        for recommender in merged_recommenders:
+        collected_recommender_ids = self._list_collected_recommender_ids(recommenders)
+        for recommender_id in collected_recommender_ids:
+            recommender = self.recommender_map[recommender_id]
+
             total_cost = 0
             resource_count = 0
             total_priority_level = {
@@ -132,7 +128,7 @@ class RecommendationManager(ResourceManager):
                 if recommender["category"] == "COST":
                     total_cost += recommendation.get("cost", 0)
 
-                if recommendation.get("affected_resource"):
+                if recommendation.get("affectedResource"):
                     resource_count += 1
 
                 total_priority_level[recommendation.get("priorityLevel")] += 1
@@ -280,13 +276,11 @@ class RecommendationManager(ResourceManager):
             ):
                 if cloud_service_group == "cloudsql":
                     cloud_service_group = "sqladmin"
-                RECOMMENDATION_MAP[key]["cloud_service_group"] = cloud_service_group
-                RECOMMENDATION_MAP[key][
-                    "cloud_service_type"
-                ] = cloud_service_type.lower()
+                RECOMMENDATION_MAP[key]["cloudServiceGroup"] = cloud_service_group
+                RECOMMENDATION_MAP[key]["cloudServiceType"] = cloud_service_type.lower()
             else:
-                RECOMMENDATION_MAP[key]["cloud_service_group"] = cloud_service_group
-                RECOMMENDATION_MAP[key]["cloud_service_type"] = None
+                RECOMMENDATION_MAP[key]["cloudServiceGroup"] = cloud_service_group
+                RECOMMENDATION_MAP[key]["cloudServiceType"] = None
 
     @staticmethod
     def _add_locations_to_recommender_map(parents_and_locations_map):
@@ -299,8 +293,8 @@ class RecommendationManager(ResourceManager):
             del parents_and_locations_map[service]
 
         for key, value in RECOMMENDATION_MAP.items():
-            cloud_service_group = value["cloud_service_group"]
-            cloud_service_type = value["cloud_service_type"]
+            cloud_service_group = value["cloudServiceGroup"]
+            cloud_service_type = value["cloudServiceType"]
 
             for service, cst_and_locations in parents_and_locations_map.items():
                 if cloud_service_group == service:
@@ -387,14 +381,6 @@ class RecommendationManager(ResourceManager):
                 f"[get_location] recommendation passing error (data: {recommendation_parent}) => {e}",
                 exc_info=True,
             )
-
-    @staticmethod
-    def _change_resource(resource):
-        try:
-            resource_name = resource.split("/")[-1]
-            return resource_name
-        except ValueError:
-            return resource
 
     @staticmethod
     def _change_cost_to_description(cost):
@@ -510,8 +496,8 @@ class RecommendationManager(ResourceManager):
             recommenders.append(recommender)
         return recommenders
 
-    def _merge_recommenders(self, recommenders):
-        merged_recommenders = []
+    def _list_collected_recommender_ids(self, recommenders):
+        collected_recommender_ids = []
         for recommender in recommenders:
             recommender_id = recommender["id"]
             if "recommendations" not in self.recommender_map[recommender_id]:
@@ -521,8 +507,10 @@ class RecommendationManager(ResourceManager):
                     self.recommender_map[recommender_id]["recommendations"].append(
                         recommendation
                     )
-            merged_recommenders.append(self.recommender_map[recommender_id])
-        return merged_recommenders
+
+            if recommender_id not in collected_recommender_ids:
+                collected_recommender_ids.append(recommender_id)
+        return collected_recommender_ids
 
     @staticmethod
     def _get_state_and_priority(total_priority_level):
