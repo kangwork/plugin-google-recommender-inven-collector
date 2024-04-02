@@ -31,6 +31,8 @@ table:
         - SECURITY: red.500
         - CATEGORY_UNSPECIFIED: coral.500
     - Resource Count: data.resourceCount
+    - Service: data.cloudServiceGroup
+    - Service Type: data.cloudServiceType
     - Cost Savings: data.costSavings
 
 tabs.0:
@@ -61,7 +63,7 @@ tabs.0:
 
 tabs.1:
   name: Recommendations
-  type: simple-table
+  type: query-search-table
   root_path: data.recommendations
   fields:
     - Description: description
@@ -69,13 +71,9 @@ tabs.1:
       type: enum
       enums:
         - ACTIVE: green.500
-          type: state
         - ACCEPTED: red.500
-          type: state
         - STATE_UNSPECIFIED: red.500
-          type: state
         - DISMISSED: red.500
-          type: state
     - Cost Savings: costSavings
     - Location: location
     - Priority Level: priorityLevel
@@ -85,5 +83,5 @@ tabs.1:
         - Second Highest: coral.500
         - Second Lowest: yellow.300
         - Lowest: gray.500
-        - Unspecified: black
+        - Unspecified: red.500
     - Operations: operations
