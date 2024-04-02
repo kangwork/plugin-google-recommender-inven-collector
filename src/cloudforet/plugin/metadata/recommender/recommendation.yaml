@@ -68,7 +68,7 @@ tabs.1:
   fields:
     - Description: description
       type: more
-      popup_key: affectedResources
+      popup_key: data.recommendations.affectedResources
       popup_name: Affected Resources
       popup_type: raw
     - State: state
