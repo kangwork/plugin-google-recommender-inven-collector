@@ -62,11 +62,10 @@ tabs.0:
 tabs.1:
   name: Recommendations
   type: simple-table
-  root_path: data.recommendations
   fields:
-    - Description: description
+    - Description: data.recommendations.description
       type: more
-      popup_key: data.insights
+      popup_key: data.recommendations.insights
       popup_name: Insights
       popup_type: simple-table
       popup_fields:
@@ -89,7 +88,7 @@ tabs.1:
             - MANAGEABILITY: green.500
             - SECURITY: red.500
             - CATEGORY_UNSPECIFIED: coral.500
-    - State: state
+    - State: data.recommendations.state
       type: enum
       enums:
         - ACTIVE: green.500
@@ -100,10 +99,14 @@ tabs.1:
           type: state
         - DISMISSED: red.500
           type: state
-    - Cost Savings: costSavings
-    - Affected Resource: affectedResource
-    - Location: location
-    - Priority Level: priorityLevel
+    - Cost Savings: data.recommendations.costSavings
+    - Affected Resource: data.recommendations.affectedResource
+      type: more
+      popup_key: data.recommendations.affectedResource
+      popup_name: Resources
+      popup_type: raw
+    - Location: data.recommendations.location
+    - Priority Level: data.recommendations.priorityLevel
       type: enum
       enums:
         - Highest: red.500
@@ -111,4 +114,4 @@ tabs.1:
         - Second Lowest: yellow.300
         - Lowest: gray.500
         - Unspecified: black
-    - Operations: operations
+    - Operations: data.recommendations.operations

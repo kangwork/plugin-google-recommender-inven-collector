@@ -318,6 +318,9 @@ class RecommendationManager(ResourceManager):
             if "locations" not in RECOMMENDATION_MAP[key]:
                 RECOMMENDATION_MAP[key]["locations"] = ["global"]
 
+            if "global" not in RECOMMENDATION_MAP[key]["locations"]:
+                RECOMMENDATION_MAP[key]["locations"].append("global")
+
     @staticmethod
     def _get_region_and_recommender_id(recommendation_name):
         try:
