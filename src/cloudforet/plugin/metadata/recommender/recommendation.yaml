@@ -31,6 +31,8 @@ table:
         - SECURITY: red.500
         - CATEGORY_UNSPECIFIED: coral.500
     - Resource Count: data.resourceCount
+    - Service: data.cloudServiceGroup
+    - Service Type: data.cloudServiceType
     - Cost Savings: data.costSavings
 
 tabs.0:
@@ -61,47 +63,19 @@ tabs.0:
 
 tabs.1:
   name: Recommendations
-  type: simple-table
+  type: query-search-table
   root_path: data.recommendations
   fields:
     - Description: description
-      type: more
-      popup_key: data.insights
-      popup_name: Insights
-      popup_type: simple-table
-      popup_fields:
-        - Description: description
-        - Severity: severity
-          type: enum
-          enums:
-            - CRITICAL: red.500
-            - HIGH: red.500
-            - SEVERITY_UNSPECIFIED: red.500
-            - MEDIUM: gray.500
-            - LOW: gray.500
-        - Category: category
-          type: enum
-          enums:
-            - COST: indigo.500
-            - SUSTAINABILITY: peacock.500
-            - RELIABILITY: violet.500
-            - PERFORMANCE: blue.500
-            - MANAGEABILITY: green.500
-            - SECURITY: red.500
-            - CATEGORY_UNSPECIFIED: coral.500
     - State: state
       type: enum
       enums:
         - ACTIVE: green.500
-          type: state
         - ACCEPTED: red.500
-          type: state
         - STATE_UNSPECIFIED: red.500
-          type: state
         - DISMISSED: red.500
-          type: state
+    - Affected Resources: viewAffectedResources
     - Cost Savings: costSavings
-    - Affected Resource: affectedResource
     - Location: location
     - Priority Level: priorityLevel
       type: enum
@@ -110,5 +84,5 @@ tabs.1:
         - Second Highest: coral.500
         - Second Lowest: yellow.300
         - Lowest: gray.500
-        - Unspecified: black
+        - Unspecified: red.500
     - Operations: operations

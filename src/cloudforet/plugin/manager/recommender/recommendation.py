@@ -1,16 +1,11 @@
 import logging
-import time
 import requests
 import json
 
 from bs4 import BeautifulSoup
 from spaceone.inventory.plugin.collector.lib import *
 
-from cloudforet.plugin.config.global_conf import (
-    ASSET_URL,
-    REGION_INFO,
-    RECOMMENDATION_MAP,
-)
+from cloudforet.plugin.config.global_conf import ASSET_URL, RECOMMENDATION_MAP
 from cloudforet.plugin.connector.recommender import *
 from cloudforet.plugin.manager import ResourceManager
 
@@ -22,18 +17,6 @@ _UNAVAILABLE_RECOMMENDER_IDS = [
     "google.cloudbilling.commitment.SpendBasedCommitmentRecommender",
     "google.accounts.security.SecurityKeyRecommender",
     "google.cloudfunctions.PerformanceRecommender",
-]
-
-_COST_RECOMMENDER_IDS = [
-    "google.bigquery.capacityCommitments.Recommender",
-    "google.cloudsql.instance.IdleRecommender",
-    "google.cloudsql.instance.OverprovisionedRecommender",
-    "google.compute.commitment.UsageCommitmentRecommender",
-    "google.cloudbilling.commitment.SpendBasedCommitmentRecommender",
-    "google.compute.image.IdleResourceRecommender",
-    "google.compute.address.IdleResourceRecommender",
-    "google.compute.disk.IdleResourceRecommender",
-    "google.compute.instance.IdleResourceRecommender",
 ]
 
 
@@ -71,17 +54,16 @@ class RecommendationManager(ResourceManager):
         cloud_asset_conn = CloudAssetConnector(
             options=options, secret_data=secret_data, schema=schema
         )
-        asset_names = [
-            asset["name"] for asset in cloud_asset_conn.list_assets_in_project()
-        ]
+        assets = [asset for asset in cloud_asset_conn.list_assets_in_project()]
+        self._create_location_field_to_recommendation_map(assets)
 
-        target_locations = self._create_target_locations(asset_names)
-        recommendation_parents = self._create_recommendation_parents(target_locations)
+        recommendation_parents = self._create_parents_for_request_params()
 
         recommendation_conn = RecommendationConnector(
             options=options, secret_data=secret_data, schema=schema
         )
 
+        preprocessed_recommendations = []
         for recommendation_parent in recommendation_parents:
             recommendations = recommendation_conn.list_recommendations(
                 recommendation_parent
@@ -109,10 +91,8 @@ class RecommendationManager(ResourceManager):
                     "location": self._get_location(recommendation_parent),
                 }
 
-                if resource := recommendation["content"]["overview"].get(
-                    "resourceName"
-                ):
-                    display["resource"] = self._change_resource(resource)
+                if resource := recommendation["content"].get("overview"):
+                    display["resource"] = resource
 
                 if cost_info := recommendation["primaryImpact"].get("costProjection"):
                     cost = cost_info.get("cost", {})
@@ -121,31 +101,57 @@ class RecommendationManager(ResourceManager):
                         display["costDescription"],
                     ) = self._change_cost_to_description(cost)
 
-                if insights := recommendation["associatedInsights"]:
-                    insight_conn = InsightConnector(
-                        options=options, secret_data=secret_data, schema=schema
-                    )
-                    related_insights = self._list_insights(insights, insight_conn)
-                    display["insights"] = self._change_insights(related_insights)
-
                 recommendation.update({"display": display})
+                preprocessed_recommendations.append(recommendation)
 
-                self.set_region_code("global")
-                yield make_cloud_service(
-                    name=recommendation_name,
-                    cloud_service_type=self.cloud_service_type,
-                    cloud_service_group=self.cloud_service_group,
-                    provider=self.provider,
-                    account=self.project_id,
-                    data=recommendation,
-                    region_code="global",
-                    instance_type="",
-                    instance_size=0,
-                    reference={
-                        "resource_id": recommendation_name,
-                        "external_link": f"https://console.cloud.google.com/cloudpubsub/schema/detail/{recommendation_name}?project={self.project_id}",
-                    },
-                )
+        recommenders = self._create_recommenders(preprocessed_recommendations)
+        collected_recommender_ids = self._list_collected_recommender_ids(recommenders)
+        for recommender_id in collected_recommender_ids:
+            recommender = self.recommender_map[recommender_id]
+
+            total_cost = 0
+            resource_count = 0
+            total_priority_level = {
+                "Lowest": 0,
+                "Second Lowest": 0,
+                "Highest": 0,
+                "Second Highest": 0,
+            }
+            for recommendation in recommender["recommendations"]:
+                if recommender["category"] == "COST":
+                    total_cost += recommendation.get("cost", 0)
+
+                if recommendation.get("affectedResource"):
+                    resource_count += 1
+
+                total_priority_level[recommendation.get("priorityLevel")] += 1
+
+            if total_cost:
+                recommender["costSavings"] = f"Total ${round(total_cost, 2)}/month"
+            if resource_count:
+                recommender["resourceCount"] = resource_count
+
+            (
+                recommender["state"],
+                recommender["primaryPriorityLevel"],
+            ) = self._get_state_and_priority(total_priority_level)
+
+            self.set_region_code("global")
+            yield make_cloud_service(
+                name=recommender["name"],
+                cloud_service_type=self.cloud_service_type,
+                cloud_service_group=self.cloud_service_group,
+                provider=self.provider,
+                account=self.project_id,
+                data=recommender,
+                region_code="global",
+                instance_type="",
+                instance_size=0,
+                reference={
+                    "resource_id": recommender["id"],
+                    "external_link": f"https://console.cloud.google.com/cloudpubsub/schema/detail/{recommender['id']}?project={self.project_id}",
+                },
+            )
 
     @staticmethod
     def _create_recommendation_id_map_by_crawling():
@@ -194,68 +200,134 @@ class RecommendationManager(ResourceManager):
 
         return recommendation_id_map
 
-    @staticmethod
-    def _create_target_locations(asset_names):
-        locations = []
-        for asset_name in asset_names:
-            if (
-                "locations/" in asset_name
-                or "regions/" in asset_name
-                and "subnetworks" not in asset_name
-            ):
-                try:
-                    prefix, sub_asset = asset_name.split("locations/")
-                    location, _ = sub_asset.split("/", 1)
-
-                    if location not in locations:
-                        locations.append(location)
-
-                except ValueError:
-                    prefix, sub_asset = asset_name.split("regions/")
-                    location, _ = sub_asset.split("/", 1)
-
-                    if location not in locations:
-                        locations.append(location)
-        return locations
-
-    @staticmethod
-    def _select_available_locations(locations):
-        available_locations = []
-        for location in locations:
-            if location[-2:] in ["-a", "-b", "-c"]:
-                available_locations.append(location[:-2])
-
-            if location in REGION_INFO:
-                available_locations.append(location)
-
-        return available_locations
-
-    def _create_recommendation_parents(self, locations):
+    def _create_parents_for_request_params(self):
         recommendation_parents = []
-        locations = self._select_available_locations(locations)
-        for location in locations:
-            for recommender_id in self.recommender_map.keys():
-                if (
-                    recommender_id in _COST_RECOMMENDER_IDS
-                    and location != "global"
-                    and location[-2:] not in ["-a", "-b", "-c"]
-                ):
-                    regions_and_zones = [
-                        location,
-                        f"{location}-a",
-                        f"{location}-b",
-                        f"{location}-c",
-                    ]
-                    for region_or_zone in regions_and_zones:
-                        recommendation_parents.append(
-                            f"projects/{self.project_id}/locations/{region_or_zone}/recommenders/{recommender_id}"
-                        )
-                else:
-                    recommendation_parents.append(
-                        f"projects/{self.project_id}/locations/{location}/recommenders/{recommender_id}"
-                    )
-
+        for recommender_id, recommender_info in self.recommender_map.items():
+            for region_or_zone in recommender_info["locations"]:
+                recommendation_parents.append(
+                    f"projects/{self.project_id}/locations/{region_or_zone}/recommenders/{recommender_id}"
+                )
         return recommendation_parents
+
+    def _create_location_field_to_recommendation_map(self, assets):
+        parents_and_locations_map = (
+            self._create_parents_and_location_map_by_cloud_asset_api(assets)
+        )
+
+        self._add_group_and_service_to_recommender_map()
+        self._add_locations_to_recommender_map(parents_and_locations_map)
+
+    @staticmethod
+    def _create_parents_and_location_map_by_cloud_asset_api(assets):
+        parents_and_locations_map = {}
+        for asset in assets:
+            asset_type = asset["assetType"]
+            locations = asset["resource"].get("location", "global")
+
+            service, cloud_service_type = asset_type.split("/")
+            cloud_service_group, postfix = service.split(".", 1)
+            cloud_service_type = cloud_service_type.lower()
+
+            if cloud_service_group not in parents_and_locations_map:
+                parents_and_locations_map[cloud_service_group] = {}
+            else:
+                if (
+                    cloud_service_type
+                    not in parents_and_locations_map[cloud_service_group]
+                ):
+                    parents_and_locations_map[cloud_service_group][
+                        cloud_service_type
+                    ] = [locations]
+                else:
+                    if (
+                        locations
+                        not in parents_and_locations_map[cloud_service_group][
+                            cloud_service_type
+                        ]
+                    ):
+                        parents_and_locations_map[cloud_service_group][
+                            cloud_service_type
+                        ].append(locations)
+
+        for group, cst_and_locations in parents_and_locations_map.items():
+            all_locations = set()
+            for cst, locations in cst_and_locations.items():
+                for location in locations:
+                    all_locations.add(location)
+            if all_locations:
+                parents_and_locations_map[group]["all_locations"] = list(all_locations)
+
+        return parents_and_locations_map
+
+    @staticmethod
+    def _add_group_and_service_to_recommender_map():
+        for key, value in RECOMMENDATION_MAP.items():
+            prefix, cloud_service_group, cloud_service_type, *others = key.split(".")
+            if not (
+                cloud_service_type.endswith("Commitments")
+                or cloud_service_type.endswith("Recommender")
+            ):
+                if cloud_service_group == "cloudsql":
+                    cloud_service_group = "sqladmin"
+                RECOMMENDATION_MAP[key]["cloudServiceGroup"] = cloud_service_group
+                RECOMMENDATION_MAP[key]["cloudServiceType"] = cloud_service_type.lower()
+            else:
+                RECOMMENDATION_MAP[key]["cloudServiceGroup"] = cloud_service_group
+                RECOMMENDATION_MAP[key]["cloudServiceType"] = None
+
+    def _add_locations_to_recommender_map(self, parents_and_locations_map):
+        delete_services = []
+        for service, cst in parents_and_locations_map.items():
+            if not cst:
+                delete_services.append(service)
+
+        for service in delete_services:
+            del parents_and_locations_map[service]
+
+        for key, value in RECOMMENDATION_MAP.items():
+            cloud_service_group = value["cloudServiceGroup"]
+            cloud_service_type = value["cloudServiceType"]
+
+            for service, cst_and_locations in parents_and_locations_map.items():
+                if cloud_service_group == service:
+                    for service_key, locations in cst_and_locations.items():
+                        if cloud_service_type == service_key:
+                            RECOMMENDATION_MAP[key]["locations"] = locations
+
+                    if (
+                        "locations" not in RECOMMENDATION_MAP[key]
+                        and cloud_service_group == "compute"
+                    ):
+                        RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
+                            "instance"
+                        ]
+
+                        if cloud_service_type == "commitment":
+                            RECOMMENDATION_MAP[key][
+                                "locations"
+                            ] = self._change_zone_to_region(
+                                cst_and_locations["instance"]
+                            )
+
+                    if "locations" not in RECOMMENDATION_MAP[key]:
+                        RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
+                            "all_locations"
+                        ]
+
+            if "locations" not in RECOMMENDATION_MAP[key]:
+                RECOMMENDATION_MAP[key]["locations"] = ["global"]
+
+            if "global" not in RECOMMENDATION_MAP[key]["locations"]:
+                RECOMMENDATION_MAP[key]["locations"].append("global")
+
+    @staticmethod
+    def _change_zone_to_region(zones):
+        regions = []
+        for zone in zones:
+            region = zone.rsplit("-", 1)[0]
+            if region not in regions:
+                regions.append(region)
+        return regions
 
     @staticmethod
     def _get_region_and_recommender_id(recommendation_name):
@@ -322,14 +394,6 @@ class RecommendationManager(ResourceManager):
             )
 
     @staticmethod
-    def _change_resource(resource):
-        try:
-            resource_name = resource.split("/")[-1]
-            return resource_name
-        except ValueError:
-            return resource
-
-    @staticmethod
     def _change_cost_to_description(cost):
         currency = cost.get("currencyCode", "USD")
         total_cost = 0
@@ -356,15 +420,6 @@ class RecommendationManager(ResourceManager):
         return total_cost, description
 
     @staticmethod
-    def _list_insights(insights, insight_conn):
-        related_insights = []
-        for insight in insights:
-            insight_name = insight["insight"]
-            insight = insight_conn.get_insight(insight_name)
-            related_insights.append(insight)
-        return related_insights
-
-    @staticmethod
     def _change_resource_name(resource):
         try:
             resource_name = resource.split("/")[-1]
@@ -380,23 +435,81 @@ class RecommendationManager(ResourceManager):
             )
         return new_target_resources
 
-    def _change_insights(self, insights):
-        changed_insights = []
-        for insight in insights:
-            changed_insights.append(
+    def _create_recommenders(self, preprocessed_recommendations):
+        recommenders = []
+        for pre_recommendation in preprocessed_recommendations:
+            redefined_recommendations = [
                 {
-                    "name": insight["name"],
-                    "description": insight["description"],
-                    "lastRefreshTime": insight["lastRefreshTime"],
-                    "observationPeriod": insight["observationPeriod"],
-                    "state": insight["stateInfo"]["state"],
-                    "category": insight["category"],
-                    "insightSubtype": insight["insightSubtype"],
-                    "severity": insight["severity"],
-                    "etag": insight["etag"],
-                    "targetResources": self._change_target_resources(
-                        insight["targetResources"]
+                    "description": pre_recommendation["description"],
+                    "state": pre_recommendation["stateInfo"]["state"],
+                    "affectedResource": pre_recommendation["display"].get("resource"),
+                    "viewAffectedResources": self._create_view_affected_resources(
+                        pre_recommendation["display"].get("resource")
                     ),
+                    "location": pre_recommendation["display"]["location"],
+                    "priorityLevel": pre_recommendation["display"]["priorityDisplay"],
+                    "operations": pre_recommendation["display"]["operationActions"],
+                    "cost": pre_recommendation["display"].get("cost"),
+                    "costSavings": pre_recommendation["display"].get("costDescription"),
                 }
-            )
-        return changed_insights
+            ]
+
+            recommender = {
+                "name": pre_recommendation["display"]["recommenderIdName"],
+                "id": pre_recommendation["display"]["recommenderId"],
+                "description": pre_recommendation["display"][
+                    "recommenderIdDescription"
+                ],
+                "category": pre_recommendation["primaryImpact"]["category"],
+                "recommendations": redefined_recommendations,
+            }
+
+            recommenders.append(recommender)
+        return recommenders
+
+    def _list_collected_recommender_ids(self, recommenders):
+        collected_recommender_ids = []
+        for recommender in recommenders:
+            recommender_id = recommender["id"]
+            if "recommendations" not in self.recommender_map[recommender_id]:
+                self.recommender_map[recommender_id].update(recommender)
+            else:
+                for recommendation in recommender["recommendations"]:
+                    self.recommender_map[recommender_id]["recommendations"].append(
+                        recommendation
+                    )
+
+            if recommender_id not in collected_recommender_ids:
+                collected_recommender_ids.append(recommender_id)
+        return collected_recommender_ids
+
+    @staticmethod
+    def _create_view_affected_resources(resource):
+        resource_name = resource.get("resourceName")
+
+        if not resource_name:
+            resource_name = resource.get("serviceName")
+
+        if not resource_name:
+            resource_name = resource.get("name")
+
+        if not resource_name:
+            resource_name = resource.get("name")
+
+        if not resource_name and "asset" in resource:
+            resource_name = resource["asset"].get("name")
+
+        return resource_name
+
+    @staticmethod
+    def _get_state_and_priority(total_priority_level):
+        if total_priority_level["Highest"] > 0:
+            return "error", "Highest"
+
+        if total_priority_level["Second Highest"] > 0:
+            return "warning", "Second Highest"
+
+        if total_priority_level["Second Lowest"] > 0:
+            return "ok", "Second Lowest"
+        else:
+            return "ok", "Lowest"
