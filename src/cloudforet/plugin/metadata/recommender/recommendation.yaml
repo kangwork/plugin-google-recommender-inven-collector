@@ -67,10 +67,6 @@ tabs.1:
   root_path: data.recommendations
   fields:
     - Description: description
-      type: more
-      popup_key: data.recommendations.affectedResources
-      popup_name: Affected Resources
-      popup_type: raw
     - State: state
       type: enum
       enums:
@@ -78,6 +74,7 @@ tabs.1:
         - ACCEPTED: red.500
         - STATE_UNSPECIFIED: red.500
         - DISMISSED: red.500
+    - Affected Resources: viewAffectedResources
     - Cost Savings: costSavings
     - Location: location
     - Priority Level: priorityLevel

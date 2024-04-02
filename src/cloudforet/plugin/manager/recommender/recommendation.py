@@ -101,13 +101,6 @@ class RecommendationManager(ResourceManager):
                         display["costDescription"],
                     ) = self._change_cost_to_description(cost)
 
-                if insights := recommendation["associatedInsights"]:
-                    insight_conn = InsightConnector(
-                        options=options, secret_data=secret_data, schema=schema
-                    )
-                    related_insights = self._list_insights(insights, insight_conn)
-                    display["insights"] = self._change_insights(related_insights)
-
                 recommendation.update({"display": display})
                 preprocessed_recommendations.append(recommendation)
 
@@ -427,15 +420,6 @@ class RecommendationManager(ResourceManager):
         return total_cost, description
 
     @staticmethod
-    def _list_insights(insights, insight_conn):
-        related_insights = []
-        for insight in insights:
-            insight_name = insight["insight"]
-            insight = insight_conn.get_insight(insight_name)
-            related_insights.append(insight)
-        return related_insights
-
-    @staticmethod
     def _change_resource_name(resource):
         try:
             resource_name = resource.split("/")[-1]
@@ -451,54 +435,22 @@ class RecommendationManager(ResourceManager):
             )
         return new_target_resources
 
-    def _change_insights(self, insights):
-        changed_insights = []
-        for insight in insights:
-            changed_insights.append(
-                {
-                    "name": insight["name"],
-                    "description": insight["description"],
-                    "lastRefreshTime": insight["lastRefreshTime"],
-                    "observationPeriod": insight["observationPeriod"],
-                    "state": insight["stateInfo"]["state"],
-                    "category": insight["category"],
-                    "insightSubtype": insight["insightSubtype"],
-                    "severity": insight["severity"],
-                    "etag": insight["etag"],
-                    "targetResources": self._change_target_resources(
-                        insight["targetResources"]
-                    ),
-                }
-            )
-        return changed_insights
-
-    @staticmethod
-    def _create_recommenders(preprocessed_recommendations):
+    def _create_recommenders(self, preprocessed_recommendations):
         recommenders = []
         for pre_recommendation in preprocessed_recommendations:
-            redefined_insights = []
-            if insights := pre_recommendation["display"]["insights"]:
-                for insight in insights:
-                    redefined_insights.append(
-                        {
-                            "description": insight["description"],
-                            "severity": insight["severity"],
-                            "category": insight["category"],
-                        }
-                    )
-
             redefined_recommendations = [
                 {
                     "description": pre_recommendation["description"],
                     "state": pre_recommendation["stateInfo"]["state"],
                     "affectedResource": pre_recommendation["display"].get("resource"),
+                    "viewAffectedResources": self._create_view_affected_resources(
+                        pre_recommendation["display"].get("resource")
+                    ),
                     "location": pre_recommendation["display"]["location"],
                     "priorityLevel": pre_recommendation["display"]["priorityDisplay"],
                     "operations": pre_recommendation["display"]["operationActions"],
                     "cost": pre_recommendation["display"].get("cost"),
                     "costSavings": pre_recommendation["display"].get("costDescription"),
-                    "insights": redefined_insights,
-                    "display": "show",
                 }
             ]
 
@@ -530,6 +482,24 @@ class RecommendationManager(ResourceManager):
             if recommender_id not in collected_recommender_ids:
                 collected_recommender_ids.append(recommender_id)
         return collected_recommender_ids
+
+    @staticmethod
+    def _create_view_affected_resources(resource):
+        resource_name = resource.get("resourceName")
+
+        if not resource_name:
+            resource_name = resource.get("serviceName")
+
+        if not resource_name:
+            resource_name = resource.get("name")
+
+        if not resource_name:
+            resource_name = resource.get("name")
+
+        if not resource_name and "asset" in resource:
+            resource_name = resource["asset"].get("name")
+
+        return resource_name
 
     @staticmethod
     def _get_state_and_priority(total_priority_level):
