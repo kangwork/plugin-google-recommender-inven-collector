@@ -239,18 +239,18 @@ class RecommendationManager(ResourceManager):
                 parents_and_locations_map[cloud_service_group] = {}
             else:
                 if (
-                    cloud_service_type
-                    not in parents_and_locations_map[cloud_service_group]
+                        cloud_service_type
+                        not in parents_and_locations_map[cloud_service_group]
                 ):
                     parents_and_locations_map[cloud_service_group][
                         cloud_service_type
                     ] = [locations]
                 else:
                     if (
-                        locations
-                        not in parents_and_locations_map[cloud_service_group][
-                            cloud_service_type
-                        ]
+                            locations
+                            not in parents_and_locations_map[cloud_service_group][
+                        cloud_service_type
+                    ]
                     ):
                         parents_and_locations_map[cloud_service_group][
                             cloud_service_type
@@ -271,8 +271,8 @@ class RecommendationManager(ResourceManager):
         for key, value in RECOMMENDATION_MAP.items():
             prefix, cloud_service_group, cloud_service_type, *others = key.split(".")
             if not (
-                cloud_service_type.endswith("Commitments")
-                or cloud_service_type.endswith("Recommender")
+                    cloud_service_type.endswith("Commitments")
+                    or cloud_service_type.endswith("Recommender")
             ):
                 if cloud_service_group == "cloudsql":
                     cloud_service_group = "sqladmin"
@@ -282,8 +282,7 @@ class RecommendationManager(ResourceManager):
                 RECOMMENDATION_MAP[key]["cloudServiceGroup"] = cloud_service_group
                 RECOMMENDATION_MAP[key]["cloudServiceType"] = None
 
-    @staticmethod
-    def _add_locations_to_recommender_map(parents_and_locations_map):
+    def _add_locations_to_recommender_map(self, parents_and_locations_map):
         delete_services = []
         for service, cst in parents_and_locations_map.items():
             if not cst:
@@ -303,12 +302,19 @@ class RecommendationManager(ResourceManager):
                             RECOMMENDATION_MAP[key]["locations"] = locations
 
                     if (
-                        "locations" not in RECOMMENDATION_MAP[key]
-                        and cloud_service_group == "compute"
+                            "locations" not in RECOMMENDATION_MAP[key]
+                            and cloud_service_group == "compute"
                     ):
                         RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
                             "instance"
                         ]
+
+                        if cloud_service_type == "commitment":
+                            RECOMMENDATION_MAP[key][
+                                "locations"
+                            ] = self._change_zone_to_region(
+                                cst_and_locations["instance"]
+                            )
 
                     if "locations" not in RECOMMENDATION_MAP[key]:
                         RECOMMENDATION_MAP[key]["locations"] = cst_and_locations[
@@ -320,6 +326,15 @@ class RecommendationManager(ResourceManager):
 
             if "global" not in RECOMMENDATION_MAP[key]["locations"]:
                 RECOMMENDATION_MAP[key]["locations"].append("global")
+
+    @staticmethod
+    def _change_zone_to_region(zones):
+        regions = []
+        for zone in zones:
+            region = zone.rsplit("-", 1)[0]
+            if region not in regions:
+                regions.append(region)
+        return regions
 
     @staticmethod
     def _get_region_and_recommender_id(recommendation_name):
