@@ -64,16 +64,14 @@ tabs.0:
 tabs.1:
   name: Recommendations
   type: query-search-table
-  root_path: data.recommendations
   fields:
-    - Description: description
+    - Description: data.recommendations.description
       type: more
-      popup_key: data.recommendations.insights
       popup_name: Insights
       popup_type: simple-table
       popup_fields:
-        - Description: description
-        - Severity: severity
+        - Description: data.recommendations.insights.description
+        - Severity: data.recommendations.insights.severity
           type: enum
           enums:
             - CRITICAL: red.500
@@ -81,7 +79,7 @@ tabs.1:
             - SEVERITY_UNSPECIFIED: red.500
             - MEDIUM: gray.500
             - LOW: gray.500
-        - Category: category
+        - Category: data.recommendations.insights.category
           type: enum
           enums:
             - COST: indigo.500
@@ -91,21 +89,21 @@ tabs.1:
             - MANAGEABILITY: green.500
             - SECURITY: red.500
             - CATEGORY_UNSPECIFIED: coral.500
-    - State: state
+    - State: data.recommendations.state
       type: enum
       enums:
         - ACTIVE: green.500
         - ACCEPTED: red.500
         - STATE_UNSPECIFIED: red.500
         - DISMISSED: red.500
-    - Cost Savings: costSavings
-    - Affected Resource: display
+    - Cost Savings: data.recommendations.costSavings
+    - Affected Resource: data.recommendations.display
       type: more
       popup_name: Affected Resources
       popup_type: raw
       popup_key: data.recommendations.affectedResources
-    - Location: location
-    - Priority Level: priorityLevel
+    - Location: data.recommendations.location
+    - Priority Level: data.recommendations.priorityLevel
       type: enum
       enums:
         - Highest: red.500
@@ -113,4 +111,4 @@ tabs.1:
         - Second Lowest: yellow.300
         - Lowest: gray.500
         - Unspecified: red.500
-    - Operations: operations
+    - Operations: data.recommendations.operations
