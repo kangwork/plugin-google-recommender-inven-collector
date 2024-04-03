@@ -118,7 +118,11 @@ class RecommendationManager(ResourceManager):
                 "Second Highest": 0,
             }
             for recommendation in recommender["recommendations"]:
-                if recommender["category"] == "COST":
+                if (
+                    recommender["category"] == "COST"
+                    and recommendation.get("cost")
+                    and isinstance(recommendation.get("cost"), float)
+                ):
                     total_cost += recommendation.get("cost", 0)
 
                 if recommendation.get("affectedResource"):
