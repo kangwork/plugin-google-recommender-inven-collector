@@ -51,19 +51,27 @@ class ResourceManager(BaseManager):
         )
 
     def collect_cloud_service(self, options, secret_data, schema):
-        cloud_services = self.create_cloud_service(options, secret_data, schema)
+        total_resources = []
+        cloud_services, error_resources = self.create_cloud_service(
+            options, secret_data, schema
+        )
         for cloud_service in cloud_services:
-            yield make_response(
-                cloud_service=cloud_service,
-                match_keys=[
-                    [
-                        "reference.resource_id",
-                        "provider",
-                        "cloud_service_type",
-                        "cloud_service_group",
-                    ]
-                ],
+            total_resources.append(
+                make_response(
+                    cloud_service=cloud_service,
+                    match_keys=[
+                        [
+                            "reference.resource_id",
+                            "provider",
+                            "cloud_service_type",
+                            "cloud_service_group",
+                        ]
+                    ],
+                )
             )
+
+        total_resources.extend(error_resources)
+        return total_resources
 
     def collect_region(self):
         for region_code in self.collected_region_codes:

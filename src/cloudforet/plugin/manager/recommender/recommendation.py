@@ -46,6 +46,8 @@ class RecommendationManager(ResourceManager):
         )
 
     def create_cloud_service(self, options, secret_data, schema):
+        error_responses = []
+        cloud_services = []
         self.project_id = secret_data["project_id"]
 
         # Needs periodic updating
@@ -106,56 +108,69 @@ class RecommendationManager(ResourceManager):
 
         recommenders = self._create_recommenders(preprocessed_recommendations)
         collected_recommender_ids = self._list_collected_recommender_ids(recommenders)
-        for recommender_id in collected_recommender_ids:
-            recommender = self.recommender_map[recommender_id]
+        for idx, recommender_id in enumerate(collected_recommender_ids):
+            try:
+                recommender = self.recommender_map[recommender_id]
+                total_cost = 0
+                resource_count = 0
+                total_priority_level = {
+                    "Lowest": 0,
+                    "Second Lowest": 0,
+                    "Highest": 0,
+                    "Second Highest": 0,
+                }
+                for recommendation in recommender["recommendations"]:
+                    if (
+                        recommender["category"] == "COST"
+                        and recommendation.get("cost")
+                        and isinstance(recommendation.get("cost"), float)
+                    ):
+                        total_cost += recommendation.get("cost", 0)
 
-            total_cost = 0
-            resource_count = 0
-            total_priority_level = {
-                "Lowest": 0,
-                "Second Lowest": 0,
-                "Highest": 0,
-                "Second Highest": 0,
-            }
-            for recommendation in recommender["recommendations"]:
-                if (
-                    recommender["category"] == "COST"
-                    and recommendation.get("cost")
-                    and isinstance(recommendation.get("cost"), float)
-                ):
-                    total_cost += recommendation.get("cost", 0)
+                    if recommendation.get("affectedResource"):
+                        resource_count += 1
 
-                if recommendation.get("affectedResource"):
-                    resource_count += 1
+                    total_priority_level[recommendation.get("priorityLevel")] += 1
 
-                total_priority_level[recommendation.get("priorityLevel")] += 1
+                if total_cost:
+                    recommender["costSavings"] = f"Total ${round(total_cost, 2)}/month"
+                if resource_count:
+                    recommender["resourceCount"] = resource_count
 
-            if total_cost:
-                recommender["costSavings"] = f"Total ${round(total_cost, 2)}/month"
-            if resource_count:
-                recommender["resourceCount"] = resource_count
+                (
+                    recommender["state"],
+                    recommender["primaryPriorityLevel"],
+                ) = self._get_state_and_priority(total_priority_level)
 
-            (
-                recommender["state"],
-                recommender["primaryPriorityLevel"],
-            ) = self._get_state_and_priority(total_priority_level)
+                self.set_region_code("global")
+                cloud_services.append(
+                    make_cloud_service(
+                        name=recommender["name"],
+                        cloud_service_type=self.cloud_service_type,
+                        cloud_service_group=self.cloud_service_group,
+                        provider=self.provider,
+                        account=self.project_id,
+                        data=recommender,
+                        region_code="global",
+                        instance_type="",
+                        instance_size=0,
+                        reference={
+                            "resource_id": recommender["id"],
+                            "external_link": f"https://console.cloud.google.com/cloudpubsub/schema/detail/{recommender['id']}?project={self.project_id}",
+                        },
+                    )
+                )
+            except Exception as e:
+                error_responses.append(
+                    make_error_response(
+                        error=e,
+                        provider=self.provider,
+                        cloud_service_group=self.cloud_service_group,
+                        cloud_service_type=self.cloud_service_type,
+                    )
+                )
 
-            self.set_region_code("global")
-            yield make_cloud_service(
-                name=recommender["name"],
-                cloud_service_type=self.cloud_service_type,
-                cloud_service_group=self.cloud_service_group,
-                provider=self.provider,
-                account=self.project_id,
-                data=recommender,
-                region_code="global",
-                instance_type="",
-                instance_size=0,
-                reference={
-                    "resource_id": recommender["id"],
-                    "external_link": f"https://console.cloud.google.com/cloudpubsub/schema/detail/{recommender['id']}?project={self.project_id}",
-                },
-            )
+        return cloud_services, error_responses
 
     @staticmethod
     def _create_recommendation_id_map_by_crawling():
