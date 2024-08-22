@@ -1,0 +1,8 @@
+from cloudforet.plugin.manager.recommender.recommendation_manager import RecommendationManager
+# from cloudforet.plugin.manager.recommender.recommendation.cost_manager import CostRecommendationManager
+# from cloudforet.plugin.manager.recommender.security_recommendation import SecurityRecommendationManager
+# from cloudforet.plugin.manager.recommender.performance_recommendation import PerformanceRecommendationManager
+# from cloudforet.plugin.manager.recommender.manageability_recommendation import ManageabilityRecommendationManager
+# from cloudforet.plugin.manager.recommender.reliability_recommendation import ReliabilityRecommendationManager
+# from cloudforet.plugin.manager.recommender.security_permissions_recommendation import SecurityPermissionsRecommendationManager
+# from cloudforet.plugin.manager.recommender.security_iam_manager import SecurityIAMRecommendationManager

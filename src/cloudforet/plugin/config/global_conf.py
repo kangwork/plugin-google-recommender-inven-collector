@@ -1,5 +1,11 @@
 # ICON URL
 ASSET_URL = "https://spaceone-custom-assets.s3.ap-northeast-2.amazonaws.com/console-assets/icons/cloud-services/google_cloud"
+RECOMMENDATION_TYPE_DOCS_URL = "https://cloud.google.com/recommender/docs/recommenders"
+UNAVAILABLE_RECOMMENDER_IDS = [
+    "google.cloudbilling.commitment.SpendBasedCommitmentRecommender",
+    "google.accounts.security.SecurityKeyRecommender",
+    "google.cloudfunctions.PerformanceRecommender",
+]
 
 REGION_INFO = {
     "asia-east1": {
@@ -230,155 +236,155 @@ REGION_INFO = {
 }
 
 # Recommendation Map by Crawling Google Cloud Console
-RECOMMENDATION_MAP = {
-    "google.bigquery.capacityCommitments.Recommender": {
-        "category": "Cost",
-        "name": "BigQuery edition slot recommender",
-        "shortDescription": "Optimize BigQuery spend with slot commitments",
-    },
-    "google.bigquery.table.PartitionClusterRecommender": {
-        "category": "Cost",
-        "name": "BigQuery partitioning and clustering recommender",
-        "shortDescription": "Partition or cluster your tables",
-    },
-    "google.run.service.CostRecommender": {
-        "category": "Cost",
-        "name": "Cloud Run CPU allocation recommender",
-        "shortDescription": "Switch to CPU always allocated",
-    },
-    "google.cloudsql.instance.IdleRecommender": {
-        "category": "Cost",
-        "name": "Cloud SQL idle instance recommender",
-        "shortDescription": "Remove unused SQL instances",
-    },
-    "google.cloudsql.instance.OverprovisionedRecommender": {
-        "category": "Cost",
-        "name": "Cloud SQL overprovisioned instance recommender",
-        "shortDescription": "Resize overprovisioned SQL instances",
-    },
-    "google.compute.commitment.UsageCommitmentRecommender": {
-        "category": "Cost",
-        "name": "Committed use discount recommender",
-        "shortDescription": "Reduce costs through commitments",
-    },
-    "google.compute.image.IdleResourceRecommender": {
-        "category": "Cost",
-        "name": "Idle custom image recommender",
-        "shortDescription": "Remove unused images",
-    },
-    "google.container.DiagnosisRecommender": {
-        "category": "Reliability",
-        "name": "GKE diagnosis recommender",
-        "shortDescription": "Mitigate risks, troubleshoot and optimize your usage of GKE",
-    },
-    "google.compute.address.IdleResourceRecommender": {
-        "category": "Cost",
-        "name": "Idle IP address recommender",
-        "shortDescription": "Remove unused IPs",
-    },
-    "google.compute.disk.IdleResourceRecommender": {
-        "category": "Cost",
-        "name": "Idle persistent disk recommender",
-        "shortDescription": "Backup and remove unused disks",
-    },
-    "google.compute.instance.IdleResourceRecommender": {
-        "category": "Cost",
-        "name": "Idle VM recommender",
-        "shortDescription": "Remove unused VMs",
-    },
-    "google.iam.policy.Recommender": {
-        "category": "Security",
-        "name": "IAM recommender",
-        "shortDescription": "Remove excess permissions",
-    },
-    "google.run.service.IdentityRecommender": {
-        "category": "Security",
-        "name": "Cloud Run Service Security recommenders",
-        "shortDescription": "Increase Cloud Run Service security",
-    },
-    "google.run.service.SecurityRecommender": {
-        "category": "Security",
-        "name": "Cloud Run Service Security recommenders",
-        "shortDescription": "Increase Cloud Run Service security",
-    },
-    "google.resourcemanager.projectUtilization.Recommender": {
-        "category": "Security",
-        "name": "Unattended project recommender",
-        "shortDescription": "Reclaim or remove unused projects",
-    },
-    "google.cloud.security.GeneralRecommender": {
-        "category": "Security",
-        "name": "Advisory Notifications recommender",
-        "shortDescription": "Ensure that the right parties within your organization have access to view critical security and privacy notifications",
-    },
-    "google.compute.instanceGroupManager.MachineTypeRecommender": {
-        "category": "Performance",
-        "name": "Managed instance group machine type recommender",
-        "shortDescription": "Resize MIG machine types",
-    },
-    "google.compute.instance.MachineTypeRecommender": {
-        "category": "Performance",
-        "name": "VM machine type recommender",
-        "shortDescription": "Resize VM machine types",
-    },
-    "google.cloudsql.instance.PerformanceRecommender": {
-        "category": "Performance",
-        "name": "Cloud SQL performance recommender",
-        "shortDescription": "Improve Cloud SQL instance performance",
-    },
-    "google.cloudsql.instance.UnderprovisionedRecommender": {
-        "category": "Performance",
-        "name": "Cloud SQL underprovisioned recommender",
-        "shortDescription": "Optimize underprovisioned Cloud SQL instances",
-    },
-    "google.resourcemanager.serviceLimit.Recommender": {
-        "category": "Reliability",
-        "name": "Service limit (quota) recommender",
-        "shortDescription": "Manage service and quota usage to avoid hitting limits",
-    },
-    "google.cloudsql.instance.ReliabilityRecommender": {
-        "category": "Reliability",
-        "name": "Cloud SQL Reliability recommender",
-        "shortDescription": "Enable High Availability on Cloud SQL Instances",
-    },
-    "google.cloudsql.instance.OutOfDiskRecommender": {
-        "category": "Reliability",
-        "name": "Cloud SQL out-of-disk recommender",
-        "shortDescription": "Prevent CloudSQL out-of-disk outage",
-    },
-    "google.resourcemanager.project.ChangeRiskRecommender": {
-        "category": "Reliability",
-        "name": "Change Risk Recommendations",
-        "shortDescription": "Reduce risk of misconfigurations",
-    },
-    "google.iam.serviceAccount.ChangeRiskRecommender": {
-        "category": "Reliability",
-        "name": "Change Risk Recommendations",
-        "shortDescription": "Reduce risk of misconfigurations",
-    },
-    "google.iam.policy.ChangeRiskRecommender": {
-        "category": "Reliability",
-        "name": "Change Risk Recommendations",
-        "shortDescription": "Reduce risk of misconfigurations",
-    },
-    "google.cloud.deprecation.GeneralRecommender": {
-        "category": "Manageability",
-        "name": "Deprecation and Breaking Changes recommender",
-        "shortDescription": "Prevent service interruptions due to deprecations and breaking changes",
-    },
-    "google.clouderrorreporting.Recommender": {
-        "category": "Manageability",
-        "name": "Error Reporting notification recommender",
-        "shortDescription": "Receive notifications for errors in your project",
-    },
-    "google.gmp.project.ManagementRecommender": {
-        "category": "Manageability",
-        "name": "Google Maps Platform project management recommender",
-        "shortDescription": "Restrict your API keys",
-    },
-    "google.logging.productSuggestion.ContainerRecommender": {
-        "category": "Manageability",
-        "name": "Product suggestion recommender",
-        "shortDescription": "Explore more helpful products",
-    },
-}
+# RECOMMENDATION_MAP = {
+#     "google.bigquery.capacityCommitments.Recommender": {
+#         "category": "Cost",
+#         "name": "BigQuery edition slot recommender",
+#         "shortDescription": "Optimize BigQuery spend with slot commitments",
+#     },
+#     "google.bigquery.table.PartitionClusterRecommender": {
+#         "category": "Cost",
+#         "name": "BigQuery partitioning and clustering recommender",
+#         "shortDescription": "Partition or cluster your tables",
+#     },
+#     "google.run.service.CostRecommender": {
+#         "category": "Cost",
+#         "name": "Cloud Run CPU allocation recommender",
+#         "shortDescription": "Switch to CPU always allocated",
+#     },
+#     "google.cloudsql.instance.IdleRecommender": {
+#         "category": "Cost",
+#         "name": "Cloud SQL idle instance recommender",
+#         "shortDescription": "Remove unused SQL instances",
+#     },
+#     "google.cloudsql.instance.OverprovisionedRecommender": {
+#         "category": "Cost",
+#         "name": "Cloud SQL overprovisioned instance recommender",
+#         "shortDescription": "Resize overprovisioned SQL instances",
+#     },
+#     "google.compute.commitment.UsageCommitmentRecommender": {
+#         "category": "Cost",
+#         "name": "Committed use discount recommender",
+#         "shortDescription": "Reduce costs through commitments",
+#     },
+#     "google.compute.image.IdleResourceRecommender": {
+#         "category": "Cost",
+#         "name": "Idle custom image recommender",
+#         "shortDescription": "Remove unused images",
+#     },
+#     "google.container.DiagnosisRecommender": {
+#         "category": "Reliability",
+#         "name": "GKE diagnosis recommender",
+#         "shortDescription": "Mitigate risks, troubleshoot and optimize your usage of GKE",
+#     },
+#     "google.compute.address.IdleResourceRecommender": {
+#         "category": "Cost",
+#         "name": "Idle IP address recommender",
+#         "shortDescription": "Remove unused IPs",
+#     },
+#     "google.compute.disk.IdleResourceRecommender": {
+#         "category": "Cost",
+#         "name": "Idle persistent disk recommender",
+#         "shortDescription": "Backup and remove unused disks",
+#     },
+#     "google.compute.instance.IdleResourceRecommender": {
+#         "category": "Cost",
+#         "name": "Idle VM recommender",
+#         "shortDescription": "Remove unused VMs",
+#     },
+#     "google.iam.policy.Recommender": {
+#         "category": "Security",
+#         "name": "IAM recommender",
+#         "shortDescription": "Remove excess permissions",
+#     },
+#     "google.run.service.IdentityRecommender": {
+#         "category": "Security",
+#         "name": "Cloud Run Service Security recommenders",
+#         "shortDescription": "Increase Cloud Run Service security",
+#     },
+#     "google.run.service.SecurityRecommender": {
+#         "category": "Security",
+#         "name": "Cloud Run Service Security recommenders",
+#         "shortDescription": "Increase Cloud Run Service security",
+#     },
+#     "google.resourcemanager.projectUtilization.Recommender": {
+#         "category": "Security",
+#         "name": "Unattended project recommender",
+#         "shortDescription": "Reclaim or remove unused projects",
+#     },
+#     "google.cloud.security.GeneralRecommender": {
+#         "category": "Security",
+#         "name": "Advisory Notifications recommender",
+#         "shortDescription": "Ensure that the right parties within your organization have access to view critical security and privacy notifications",
+#     },
+#     "google.compute.instanceGroupManager.MachineTypeRecommender": {
+#         "category": "Performance",
+#         "name": "Managed instance group machine type recommender",
+#         "shortDescription": "Resize MIG machine types",
+#     },
+#     "google.compute.instance.MachineTypeRecommender": {
+#         "category": "Performance",
+#         "name": "VM machine type recommender",
+#         "shortDescription": "Resize VM machine types",
+#     },
+#     "google.cloudsql.instance.PerformanceRecommender": {
+#         "category": "Performance",
+#         "name": "Cloud SQL performance recommender",
+#         "shortDescription": "Improve Cloud SQL instance performance",
+#     },
+#     "google.cloudsql.instance.UnderprovisionedRecommender": {
+#         "category": "Performance",
+#         "name": "Cloud SQL underprovisioned recommender",
+#         "shortDescription": "Optimize underprovisioned Cloud SQL instances",
+#     },
+#     "google.resourcemanager.serviceLimit.Recommender": {
+#         "category": "Reliability",
+#         "name": "Service limit (quota) recommender",
+#         "shortDescription": "Manage service and quota usage to avoid hitting limits",
+#     },
+#     "google.cloudsql.instance.ReliabilityRecommender": {
+#         "category": "Reliability",
+#         "name": "Cloud SQL Reliability recommender",
+#         "shortDescription": "Enable High Availability on Cloud SQL Instances",
+#     },
+#     "google.cloudsql.instance.OutOfDiskRecommender": {
+#         "category": "Reliability",
+#         "name": "Cloud SQL out-of-disk recommender",
+#         "shortDescription": "Prevent CloudSQL out-of-disk outage",
+#     },
+#     "google.resourcemanager.project.ChangeRiskRecommender": {
+#         "category": "Reliability",
+#         "name": "Change Risk Recommendations",
+#         "shortDescription": "Reduce risk of misconfigurations",
+#     },
+#     "google.iam.serviceAccount.ChangeRiskRecommender": {
+#         "category": "Reliability",
+#         "name": "Change Risk Recommendations",
+#         "shortDescription": "Reduce risk of misconfigurations",
+#     },
+#     "google.iam.policy.ChangeRiskRecommender": {
+#         "category": "Reliability",
+#         "name": "Change Risk Recommendations",
+#         "shortDescription": "Reduce risk of misconfigurations",
+#     },
+#     "google.cloud.deprecation.GeneralRecommender": {
+#         "category": "Manageability",
+#         "name": "Deprecation and Breaking Changes recommender",
+#         "shortDescription": "Prevent service interruptions due to deprecations and breaking changes",
+#     },
+#     "google.clouderrorreporting.Recommender": {
+#         "category": "Manageability",
+#         "name": "Error Reporting notification recommender",
+#         "shortDescription": "Receive notifications for errors in your project",
+#     },
+#     "google.gmp.project.ManagementRecommender": {
+#         "category": "Manageability",
+#         "name": "Google Maps Platform project management recommender",
+#         "shortDescription": "Restrict your API keys",
+#     },
+#     "google.logging.productSuggestion.ContainerRecommender": {
+#         "category": "Manageability",
+#         "name": "Product suggestion recommender",
+#         "shortDescription": "Explore more helpful products",
+#     },
+# }

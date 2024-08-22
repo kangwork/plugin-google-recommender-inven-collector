@@ -55,5 +55,6 @@ def _create_init_metadata():
                 "inventory.ErrorResource",
             ],
             "options_schema": {},
+            # "concurrency": 2,
         }
     }
