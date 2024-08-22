@@ -1,5 +1,4 @@
 import logging
-
 from cloudforet.plugin.connector.base import GoogleCloudConnector
 
 __all__ = ["CloudAssetConnector"]

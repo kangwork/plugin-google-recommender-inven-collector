@@ -1,7 +1,6 @@
 import logging
 
 from cloudforet.plugin.connector.base import GoogleCloudConnector
-
 __all__ = ["RecommendationConnector"]
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,9 +25,9 @@ class RecommendationConnector(GoogleCloudConnector):
 
         while request is not None:
             response = request.execute()
-            recommendations = [
+            recommendations.extend([
                 recommendation for recommendation in response.get("recommendations", [])
-            ]
+            ])
             request = (
                 self.client.projects()
                 .locations()

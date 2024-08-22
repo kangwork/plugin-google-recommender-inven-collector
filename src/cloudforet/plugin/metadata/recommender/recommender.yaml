@@ -34,6 +34,7 @@ table:
     - Service: data.cloudServiceGroup
     - Service Type: data.cloudServiceType
     - Cost Savings: data.costSavings
+    - Google Cloud Project: account
 
 tabs.0:
   name: Details
