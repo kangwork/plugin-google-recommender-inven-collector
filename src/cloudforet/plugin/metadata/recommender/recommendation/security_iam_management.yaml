@@ -1,0 +1,134 @@
+search:
+  fields:
+    - Name: name
+    - State: data.recommendations.state
+    - Category: data.category
+    - Location: data.location
+    - Member Type: data.memberType
+#      field_type: enum
+#      enums:
+#          - SERVICE_ACCOUNT: green.500
+#          - USER: yellow.500
+table:
+#  sort:
+#    key: data.overallValues.priority
+#    desc: false
+
+  fields:
+    - Member Type: data.memberType
+      type: enum
+      enums:
+        - USER: red.500
+        - SERVICE ACCOUNT: coral.500
+    - Category: data.category
+      type: enum
+      enums:
+        - SECURITY: blue.500
+      is_optional: true
+    - Product: data.product
+      is_optional: true
+    - Product Category: data.productCategory
+      is_optional: true
+    - Insight Subtypes: data.insightSubtypes
+      type: list
+      options:
+        type: enum
+        enums:
+          - PERMISSIONS USAGE: red.500
+          - SERVICE ACCOUNT USAGE: coral.500
+    - Location: data.location
+      type: inventory.Region
+    - Overall Priority Level: data.overallValues.priority
+      type: enum
+      enums:
+          - P1: red.500
+            name: Highest
+          - P2: coral.500
+            name: Second Highest
+          - P3: red.300
+            name: Second Lowest
+          - P4: coral.300
+            name: Lowest
+    - Total Roles Count: data.overallValues.rolesCount
+    - Total Excess Permissions Count: data.overallValues.totalUnusedPermissionsCount
+
+tabs.0:
+  name: Permissions Usage Insights
+  type: query-search-table
+  root_path: data.roleRecommendations
+  unwind: data.roleRecommendations
+  sort:
+    key: data.roleRecommendations.unusedPermissionsCount
+    desc: true
+  fields:
+    - Role Name: roleName
+    - Priority Level: priority
+      type: enum
+      enums:
+          - P1: red.500
+            name: Highest
+          - P2: coral.500
+            name: Second Highest
+          - P3: red.300
+            name: Second Lowest
+          - P4: coral.300
+            name: Lowest
+    - Current Total Permissions Count: currentTotalPermissionsCount
+
+    - name: Unused Permissions Count
+      key: unusedPermissionsCount
+#      type: more
+#      popup_key: data.roleRecommendations.unusedPermissionsCount
+#      popup_name: "The permissions below were not used during the observation period"
+#      popup_type: raw
+
+    - name: Unused Permissions List
+      key: unusedPermissionsCount
+      type: more
+      popup_key: data.roleRecommendations.unusedPermissions
+      popup_name: "The permissions below were not used during the observation period"
+      popup_type: raw
+
+    - name: Recently Used Permissions Count
+      key: exercisedPermissionsCount
+#      type: more
+#      popup_key: data.roleRecommendations.exercisedPermissionsCount
+#      popup_name: "The permissions below were used during the observation period"
+#      popup_type: raw
+
+    - name: Recently Used Permissions List
+      key: exercisedPermissionsCount
+      type: more
+      popup_key: data.roleRecommendations.exercisedPermissions
+      popup_name: "The permissions below were used during the observation period"
+      popup_type: raw
+
+    - name: Inferred Permissions Count
+      key: inferredPermissionsCount
+
+    - name: Inferred Permissions List
+      key: inferredPermissionsCount
+      type: more
+      popup_key: data.roleRecommendations.inferredPermissions
+      popup_name: "The permissions below are likely to be needed based on the recently used permissions"
+      popup_type: raw
+
+    - Last Refreshed Time: lastRefreshTime
+      type: datetime
+      display_format: 'YYYY-MM-DD HH:mm:ss'
+      source_type: iso8601
+
+tabs.1:
+  name: Service Account Usage Insight
+  type: item
+  fields:
+    - Observation Period (days): data.serviceAccountRecommendation.observationPeriod
+    - Last Authenticated Time: data.serviceAccountRecommendation.lastAuthenticatedTime
+      type: datetime
+      display_format: 'YYYY-MM-DD HH:mm:ss'
+      source_type: iso8601
+    - Last Refresh Time: data.serviceAccountRecommendation.lastRefreshTime
+      type: datetime
+      display_format: 'YYYY-MM-DD HH:mm:ss'
+      source_type: iso8601
+    - Insight ID: data.serviceAccountRecommendation.insightId
