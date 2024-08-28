@@ -15,7 +15,7 @@ class IAMConnector(GoogleCloudConnector):
 
     def list_predefined_roles(self):
         roles = []
-        request = self.client.roles().list(view='FULL')
+        request = self.client.roles().list(pageSize=1000, view='FULL')
 
         while True:
             response = request.execute()
@@ -35,7 +35,7 @@ class IAMConnector(GoogleCloudConnector):
     def list_project_roles(self, project_id: str = None):
         parent = f"projects/{project_id}"
         roles = []
-        request = self.client.projects().roles().list(parent=parent, view='FULL')
+        request = self.client.projects().roles().list(parent=parent, pageSize=1000, view='FULL')
         while True:
             response = request.execute()
 
@@ -54,7 +54,7 @@ class IAMConnector(GoogleCloudConnector):
 
     def list_organization_roles(self, resource):
         roles = []
-        request = self.client.organizations().roles().list(parent=resource, view='FULL')
+        request = self.client.organizations().roles().list(parent=resource, pageSize=1000, view='FULL')
 
         while True:
             response = request.execute()
