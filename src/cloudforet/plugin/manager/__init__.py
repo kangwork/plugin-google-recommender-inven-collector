@@ -1,3 +1,3 @@
 from cloudforet.plugin.manager.base import ResourceManager
 from cloudforet.plugin.manager.recommender.security_iam_manager import SecurityIAMRecommendationManager
-# from cloudforet.plugin.manager.recommender.recommendation_manager import RecommendationManager
+from cloudforet.plugin.manager.recommender.all_recommendations_manager import AllRecommendationsManager

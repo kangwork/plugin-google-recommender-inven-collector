@@ -1,6 +1,14 @@
 # ICON URL
 ASSET_URL = "https://spaceone-custom-assets.s3.ap-northeast-2.amazonaws.com/console-assets/icons/cloud-services/google_cloud"
 
+RECOMMENDATION_TYPE_DOCS_URL = "https://cloud.google.com/recommender/docs/recommenders"
+
+UNAVAILABLE_RECOMMENDER_IDS = [
+    "google.cloudbilling.commitment.SpendBasedCommitmentRecommender",
+    "google.accounts.security.SecurityKeyRecommender",
+    "google.cloudfunctions.PerformanceRecommender",
+]
+
 REGION_INFO = {
     "asia-east1": {
         "name": "Taiwan (Changhua County)",

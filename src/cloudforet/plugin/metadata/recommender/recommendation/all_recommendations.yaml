@@ -1,0 +1,90 @@
+search:
+  fields:
+    - Name: name
+    - State: data.overallStates
+    - Category: data.categories
+
+table:
+  sort:
+    key: data.priority
+    desc: true
+  fields:
+    - States: data.overallStates
+    - Google Cloud Project: account
+#    - Impacts: data.overallImpacts (category specific)
+    - Categories: data.overallCategories
+    - Overall Location: data.overallLocation
+    - Overall Priority: data.overallPriority
+      type: enum
+      enums:
+        - P1: red.500
+          name: Highest
+        - P2: coral.500
+          name: Second Highest
+        - P3: red.300
+          name: Second Lowest
+        - P4: coral.300
+          name: Lowest
+    - Observation Period (days): data.observationPeriod
+      type: number
+    - Last Refresh Time: data.overallLastRefreshTime
+      type: datetime
+      display_format: 'YYYY-MM-DD HH:mm:ss'
+      source_type: iso8601
+
+tabs.0:
+  name: Recommendations
+  type: query-search-table
+  root_path: data.recommendations
+  sort:
+    key: priority
+    desc: true
+  fields:
+    - Category: category
+      type: enum
+      enums:
+        - COST: indigo.500
+        - SUSTAINABILITY: peacock.500
+        - RELIABILITY: violet.500
+        - PERFORMANCE: coral.500
+        - MANAGEABILITY: green.500
+        - SECURITY: blue.500
+    - Description: shortDescription
+    - Long Description: longDescription
+    - State: state
+      type: enum
+      enums:
+        - ACTIVE: green.500
+          type: state
+        - CLAIMED: green.400
+          type: state
+        - SUCCEEDED: blue.100
+          type: state
+        - FAILED: red.500
+          type: state
+        - DISMISSED: gray.500
+          type: state
+    - Impact: impact
+      type: dict
+    - Resource: resource
+    - Subtype: subtype
+    - Priority Level: priority
+      type: enum
+      enums:
+        - P1: red.500
+          name: Highest
+        - P2: coral.500
+          name: Second Highest
+        - P3: red.300
+          name: Second Lowest
+        - P4: coral.300
+          name: Lowest
+    - Last Refreshed Time: lastRefreshTime
+      type: datetime
+      display_format: 'YYYY-MM-DD HH:mm:ss'
+      source_type: iso8601
+    - Associated Insights: associatedInsights
+    - Recommender Name: recommenderName
+    - Location: location
+      type: inventory.Region
+    - Insight ID: insightId

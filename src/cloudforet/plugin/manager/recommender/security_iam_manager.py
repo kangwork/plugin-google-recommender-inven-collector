@@ -3,8 +3,12 @@ from spaceone.inventory.plugin.collector.lib import *
 from cloudforet.plugin.config.global_conf import ASSET_URL
 from cloudforet.plugin.connector.recommender.insight import InsightConnector
 from cloudforet.plugin.connector.iam import IAMConnector
-from cloudforet.plugin.connector.recommender.recommendation import RecommendationConnector
+from cloudforet.plugin.connector.recommender.recommendation import (
+    RecommendationConnector,
+)
 from cloudforet.plugin.manager import ResourceManager
+from cloudforet.plugin.utils.converter import Converter
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -21,6 +25,7 @@ class SecurityIAMRecommendationManager(ResourceManager):
         self.project_id = None
         self.organization_id = None
         self.all_roles_to_permissions = {}
+        self.converter = None
 
     def create_cloud_service_type(self):
         return make_cloud_service_type(
@@ -45,9 +50,14 @@ class SecurityIAMRecommendationManager(ResourceManager):
         iam_connector = IAMConnector(
             options=options, secret_data=secret_data, schema=schema
         )
-        self.all_roles_to_permissions = iam_connector.get_all_roles_to_permissions_dict(project_id=self.project_id, organization_id=self.organization_id)
-        revoked_policy_insights, revoked_service_account_insights = self._list_insights(options, secret_data, schema)
+        self.all_roles_to_permissions = iam_connector.get_all_roles_to_permissions_dict(
+            project_id=self.project_id, organization_id=self.organization_id
+        )
+        revoked_policy_insights, revoked_service_account_insights = self._list_insights(
+            options, secret_data, schema
+        )
         recs = self.list_recommendations(options, secret_data, schema)
+        self.converter = Converter()
 
         for rec in recs:
             data = self._parse_recommendation(rec)
@@ -95,7 +105,9 @@ class SecurityIAMRecommendationManager(ResourceManager):
                 role = perm_data.get("roleName")
                 if role not in member_to_role_to_data[member]:
                     member_to_role_to_data[member][role] = {}
-                member_to_role_to_data[member][role].update(perm_data["insightSpecificData"])
+                member_to_role_to_data[member][role].update(
+                    perm_data["insightSpecificData"]
+                )
 
         for insight in revoked_service_account_insights:
             service_account_data = self._parse_service_account_insights(insight)
@@ -103,8 +115,12 @@ class SecurityIAMRecommendationManager(ResourceManager):
             member_type = service_account_data.get("memberType")
             insight_data = service_account_data.get("insightSpecificData")
             if member in member_to_role_to_data:
-                member_to_overall_values[member]["insightSubtypes"].append("SERVICE ACCOUNT USAGE")
-                member_to_overall_values[member]["lastRefreshTime"] = insight_data["lastRefreshTime"]
+                member_to_overall_values[member]["insightSubtypes"].append(
+                    "SERVICE ACCOUNT USAGE"
+                )
+                member_to_overall_values[member]["lastRefreshTime"] = insight_data[
+                    "lastRefreshTime"
+                ]
             else:
                 member_to_role_to_data[member] = {}
                 service_account_data["priority"] = "P4"
@@ -112,21 +128,32 @@ class SecurityIAMRecommendationManager(ResourceManager):
                     "_priority_count": 1,
                     "_priority_sum": 4,
                     "insightSubtypes": ["SERVICE ACCOUNT USAGE"],
-                    "memberType": member_type
+                    "memberType": member_type,
                 }
             member_to_role_to_data[member]["serviceAccount"] = insight_data
 
         for member in member_to_role_to_data:
-            avg_priority = member_to_overall_values[member].pop("_priority_sum") / member_to_overall_values[member].pop("_priority_count")
-            member_to_overall_values[member]["priority"] = self._convert_avg_priority_to_priority(avg_priority)
+            avg_priority = member_to_overall_values[member].pop(
+                "_priority_sum"
+            ) / member_to_overall_values[member].pop("_priority_count")
+            member_to_overall_values[member]["priority"] = (
+                self.converter._convert_avg_priority_to_priority(avg_priority)
+            )
             data = {
-                "serviceAccountRecommendation": member_to_role_to_data[member].pop("serviceAccount", {}),
-                "roleRecommendations": [member_to_role_to_data[member][role] for role in member_to_role_to_data[member]],
+                "serviceAccountRecommendation": member_to_role_to_data[member].pop(
+                    "serviceAccount", {}
+                ),
+                "roleRecommendations": [
+                    member_to_role_to_data[member][role]
+                    for role in member_to_role_to_data[member]
+                ],
                 "memberType": member_to_overall_values[member].pop("memberType"),
                 "category": "SECURITY",
                 "product": "IAM",
                 "productCategory": "Access Management",
-                "insightSubtypes": member_to_overall_values[member].pop("insightSubtypes"),
+                "insightSubtypes": member_to_overall_values[member].pop(
+                    "insightSubtypes"
+                ),
                 "overallValues": member_to_overall_values[member],
             }
             try:
@@ -172,9 +199,13 @@ class SecurityIAMRecommendationManager(ResourceManager):
         rec_parents = []
         rec_id = "google.iam.policy.Recommender"
         if self.organization_id:
-            rec_parents.append(f"organizations/{self.organization_id}/locations/global/recommenders/{rec_id}")
+            rec_parents.append(
+                f"organizations/{self.organization_id}/locations/global/recommenders/{rec_id}"
+            )
         if self.project_id:
-            rec_parents.append(f"projects/{self.project_id}/locations/global/recommenders/{rec_id}")
+            rec_parents.append(
+                f"projects/{self.project_id}/locations/global/recommenders/{rec_id}"
+            )
         return rec_parents
 
     def _parse_recommendation(self, rec: dict) -> dict:
@@ -187,7 +218,6 @@ class SecurityIAMRecommendationManager(ResourceManager):
         data = {
             "memberType": member_type,
             "memberId": member_id,
-
             "roleName": overview.get("removedRole"),
             "unusedPermissionsCount": rec.get("primaryImpact", {})
             .get("securityProjection", {})
@@ -215,24 +245,28 @@ class SecurityIAMRecommendationManager(ResourceManager):
         exercised_perms = [perm.get("permission") for perm in _exercised_perms_dict]
         unused_permissions = all_perms.difference(set(exercised_perms))
 
-        inferred_perms = [perm.get("permission") for perm in content.get("inferredPermissions", [])]
+        inferred_perms = [
+            perm.get("permission") for perm in content.get("inferredPermissions", [])
+        ]
         data = {
-
             "memberType": member_type,
             "memberId": member_id,
             "roleName": role_name,
-
             "insightSpecificData": {
                 "roleName": role_name,
                 "insightId": insight.get("name"),
                 "unusedPermissions": list(unused_permissions),
                 "exercisedPermissions": exercised_perms,
-                "exercisedPermissionsCount": len(content.get("exercisedPermissions", [])),
+                "exercisedPermissionsCount": len(
+                    content.get("exercisedPermissions", [])
+                ),
                 "inferredPermissions": inferred_perms,
                 "inferredPermissionsCount": len(inferred_perms),
-                "currentTotalPermissionsCount": content.get("currentTotalPermissionsCount", 0),
+                "currentTotalPermissionsCount": content.get(
+                    "currentTotalPermissionsCount", 0
+                ),
                 "observationPeriod": observation_period_in_days,
-            }
+            },
         }
         return data
 
@@ -241,16 +275,14 @@ class SecurityIAMRecommendationManager(ResourceManager):
         observation_period_in_sec = insight.get("observationPeriod")
         observation_period_in_days = round(int(observation_period_in_sec[:-1]) / 86400)
         data = {
-
             "memberType": "SERVICE ACCOUNT",
             "memberId": content.get("email"),
-
             "insightSpecificData": {
                 "insightId": insight.get("name"),
                 "lastAuthenticatedTime": content.get("lastAuthenticatedTime"),
                 "lastRefreshTime": insight.get("lastRefreshTime"),
                 "observationPeriod": observation_period_in_days,
-            }
+            },
         }
         return data
 
@@ -259,17 +291,10 @@ class SecurityIAMRecommendationManager(ResourceManager):
             options=options, secret_data=secret_data, schema=schema
         )
         insight_parent = f"projects/{self.project_id}/locations/global/insightTypes/"
-        revoked_policy_insights = insight_connector.list_insights(insight_parent + "google.iam.policy.Insight")
-        revoked_service_account_insights = insight_connector.list_insights(insight_parent + "google.iam.serviceAccount.Insight")
+        revoked_policy_insights = insight_connector.list_insights(
+            insight_parent + "google.iam.policy.Insight"
+        )
+        revoked_service_account_insights = insight_connector.list_insights(
+            insight_parent + "google.iam.serviceAccount.Insight"
+        )
         return revoked_policy_insights, revoked_service_account_insights
-
-    @staticmethod
-    def _convert_avg_priority_to_priority(avg_priority: float) -> str:
-        if avg_priority < 1.5:
-            return "P1"
-        elif avg_priority < 2.5:
-            return "P2"
-        elif avg_priority < 3.5:
-            return "P3"
-        else:
-            return "P4"
