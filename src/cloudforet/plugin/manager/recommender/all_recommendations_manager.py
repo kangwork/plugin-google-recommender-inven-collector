@@ -31,7 +31,7 @@ class AllRecommendationsManager(ResourceManager):
         self.cloud_service_group = "Recommender"
         self.cloud_service_type = "AllRecommendations"
         self.metadata_path = (
-            "plugin/metadata/recommender/recommendation/all_recommendations.yaml"
+            "plugin/metadata/recommender/all_recommendations.yaml"
         )
         self.converter = None
 

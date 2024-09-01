@@ -13,14 +13,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class IAMManagementRecommendationManager(ResourceManager):
-    service = "Security Recommendation - IAM Management"
+    service = "IAM Management"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cloud_service_group = "Recommender"
-        self.cloud_service_type = "SecurityIAMManagement"
+        self.cloud_service_type = "IAMManagement"
         self.metadata_path = (
-            "plugin/metadata/recommender/recommendation/iam_management.yaml"
+            "plugin/metadata/recommender/iam_management.yaml"
         )
         self.project_id = None
         self.organization_id = None
