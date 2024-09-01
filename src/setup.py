@@ -36,8 +36,7 @@ setup(
         "requests",
         "beautifulsoup4",
     ],
-    package_data={"cloudforet": ["plugin/metadata/*/*.yaml",
-                                 "plugin/metadata/*/*/*.yaml"
+    package_data={"cloudforet": ["plugin/metadata/*/*.yaml"
                                  ]},
     zip_safe=False,
 )
