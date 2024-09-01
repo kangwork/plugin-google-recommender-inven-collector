@@ -10,10 +10,9 @@ search:
 #          - SERVICE_ACCOUNT: green.500
 #          - USER: yellow.500
 table:
-#  sort:
-#    key: data.overallValues.priority
-#    desc: false
-
+  sort:
+    key: data.overallValues.priority
+    desc: false
   fields:
     - Member Type: data.memberType
       type: enum
