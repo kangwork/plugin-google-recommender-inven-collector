@@ -5,10 +5,7 @@ search:
     - Category: data.category
     - Location: data.location
     - Member Type: data.memberType
-#      field_type: enum
-#      enums:
-#          - SERVICE_ACCOUNT: green.500
-#          - USER: yellow.500
+
 table:
   sort:
     key: data.overallValues.priority
@@ -76,10 +73,6 @@ tabs.0:
 
     - name: Unused Permissions Count
       key: unusedPermissionsCount
-#      type: more
-#      popup_key: data.roleRecommendations.unusedPermissionsCount
-#      popup_name: "The permissions below were not used during the observation period"
-#      popup_type: raw
 
     - name: Unused Permissions List
       key: unusedPermissionsCount
@@ -90,10 +83,6 @@ tabs.0:
 
     - name: Recently Used Permissions Count
       key: exercisedPermissionsCount
-#      type: more
-#      popup_key: data.roleRecommendations.exercisedPermissionsCount
-#      popup_name: "The permissions below were used during the observation period"
-#      popup_type: raw
 
     - name: Recently Used Permissions List
       key: exercisedPermissionsCount
