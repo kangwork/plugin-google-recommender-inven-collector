@@ -58,7 +58,7 @@ tabs.0:
   root_path: data.roleRecommendations
   unwind: data.roleRecommendations
   sort:
-    key: data.roleRecommendations.unusedPermissionsCount
+    key: unusedPermissionsCount
     desc: true
   fields:
     - Role Name: roleName

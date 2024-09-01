@@ -6,8 +6,8 @@ search:
 
 table:
   sort:
-    key: data.priority
-    desc: true
+    key: data.overallPriority
+    desc: false
   fields:
     - States: data.overallStates
     - Google Cloud Project: account
