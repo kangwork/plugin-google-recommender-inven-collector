@@ -13,7 +13,7 @@ from cloudforet.plugin.connector.recommender.recommendation import (
 from cloudforet.plugin.connector.recommender.cloud_asset import CloudAssetConnector
 import requests
 from bs4 import BeautifulSoup
-from cloudforet.plugin.utils import converter
+from cloudforet.plugin.utils.converter import Converter
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -51,13 +51,14 @@ class AllRecommendationsManager(ResourceManager):
     @classmethod
     def _is_category(cls, rec: dict) -> bool:
         return (
-            not cls.category
+            not cls.category  # All Recommendations
             or rec.get("primaryImpact", {}).get("category") == cls.category
         )
 
     def create_cloud_service(self, options, secret_data, schema):
         cloud_services, error_responses = [], []
         self.project_id = secret_data["project_id"]
+        self.converter = Converter()
         self.set_recommendation_id_map_by_crawling()
 
         cloud_asset_conn = CloudAssetConnector(
@@ -86,9 +87,9 @@ class AllRecommendationsManager(ResourceManager):
             if not self._is_category(self.rec_parent_to_recs[rec_parent][0]):
                 continue
             recommender_id = rec_parent.split("/")[-1]
-            product, product_service = recommender_id.split(".")
-            product = self._convert_product_name(product)
-            product_service = self._convert_product_service_name(product_service)
+            product, product_service = recommender_id.split(".")[:2]
+            product = self.converter.convert_product_or_product_service_name(product)
+            product_service = self.converter.convert_product_or_product_service_name(product_service)
             location = rec_parent.split("/locations/")[1].split("/")[0]
             if product not in prd_serv_recs:
                 prd_serv_recs[product] = {}
@@ -380,7 +381,7 @@ recommendations?project={self.project_id}",
 
                         if cloud_service_type == "commitment":
                             recommender_map[key]["locations"] = (
-                                self._change_zone_to_region(
+                                self.converter.convert_zone_to_region(
                                     cst_and_locations["instance"]
                                 )
                             )
@@ -395,23 +396,3 @@ recommendations?project={self.project_id}",
 
             if "global" not in recommender_map[key]["locations"]:
                 recommender_map[key]["locations"].append("global")
-
-    @staticmethod
-    def _change_zone_to_region(zones):
-        regions = []
-        for zone in zones:
-            region = zone.rsplit("-", 1)[0]
-            if region not in regions:
-                regions.append(region)
-        return regions
-
-    @staticmethod
-    def _convert_product_or_product_service_name(name: str):
-        if name == "iam":
-            return "IAM"
-        if name == "resourcemanager":
-            return "Resource Manager"
-        for char in name:
-            if char.isupper():
-                name = name.replace(char, f" {char}")
-        return name.capitalize()

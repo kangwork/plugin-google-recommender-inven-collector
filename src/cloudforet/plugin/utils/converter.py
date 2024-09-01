@@ -33,3 +33,24 @@ class Converter(object):
             return "P3"
         else:
             return "P4"
+
+    @staticmethod
+    def convert_zone_to_region(zones):
+        regions = []
+        for zone in zones:
+            region = zone.rsplit("-", 1)[0]
+            if region not in regions:
+                regions.append(region)
+        return regions
+
+    @staticmethod
+    def convert_product_or_product_service_name(name: str):
+        if name == "iam":
+            return "IAM"
+        if name == "resourcemanager":
+            return "Resource Manager"
+        for char in name:
+            if char.isupper():
+                name = name.replace(char, f" {char}")
+        return name.capitalize()
+
