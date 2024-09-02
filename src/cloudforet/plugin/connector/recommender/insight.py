@@ -1,6 +1,7 @@
 import logging
-
 from cloudforet.plugin.connector.base import GoogleCloudConnector
+from cloudforet.plugin.utils.error_handlers import handle_403_exception
+
 __all__ = ["InsightConnector"]
 _LOGGER = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ class InsightConnector(GoogleCloudConnector):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    @handle_403_exception(default_response={})
     def get_policy_insight(self, insight_id: str, **query):
         insight_parent = f"projects/{self.project_id}/locations/global/insightTypes/google.iam.policy/insights/{insight_id}"
         query.update({"parent": insight_parent})
@@ -25,6 +27,7 @@ class InsightConnector(GoogleCloudConnector):
         response = request.execute()
         return response
 
+    @handle_403_exception(default_response=[])
     def list_insights(self, insight_parent, **query):
         insights = []
         query.update({"parent": insight_parent})

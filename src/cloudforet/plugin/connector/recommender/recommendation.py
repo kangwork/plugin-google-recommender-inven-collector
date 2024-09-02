@@ -1,6 +1,7 @@
 import logging
-
 from cloudforet.plugin.connector.base import GoogleCloudConnector
+from cloudforet.plugin.utils.error_handlers import handle_403_exception
+
 __all__ = ["RecommendationConnector"]
 _LOGGER = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ class RecommendationConnector(GoogleCloudConnector):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    @handle_403_exception(default_response=[])
     def list_recommendations(self, recommendation_parent, **query):
         recommendations = []
         query.update({"parent": recommendation_parent})

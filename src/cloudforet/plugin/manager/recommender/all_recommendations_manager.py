@@ -65,12 +65,7 @@ class AllRecommendationsManager(ResourceManager):
             options=options, secret_data=secret_data, schema=schema
         )
 
-        try:
-            assets = [asset for asset in cloud_asset_conn.list_assets_in_project()]
-
-        except Exception as e:
-            _LOGGER.error(f"Failed to get assets from Cloud Asset API, skipping: {e}")
-            assets = []
+        assets = [asset for asset in cloud_asset_conn.list_assets_in_project()]
 
         self._create_location_field_to_recommendation_map(assets)
         self.all_locations = ["global"]
